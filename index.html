@@ -115,13 +115,23 @@
                 <div v-if="!currentSubject" class="text-xs text-slate-500 text-center py-6">请先选择科目</div>
             </div>
         </div>
-	<div class="p-3 border-t border-slate-800 bg-slate-950 text-[10px] space-y-2 shrink-0">
-            <div class="font-semibold text-slate-400">☁️ 云同步 (GitHub Gist)</div>
-            <button @click="configGitHub" class="w-full text-left text-indigo-400 hover:text-indigo-300 transition-colors">🔑 配置Token</button>
-            <button @click="backupToGist" class="w-full text-left text-emerald-400 hover:text-emerald-300 transition-colors">⬆️ 备份到云端</button>
-            <button @click="restoreFromGist" class="w-full text-left text-amber-400 hover:text-amber-300 transition-colors">⬇️ 从云端恢复</button>
-            <div v-if="gistId" class="text-slate-500 truncate">Gist: {{ gistId }}</div>
-        </div>
+<div class="p-2 border-t border-slate-800 bg-slate-950 text-[9px] space-y-1 shrink-0">
+    <div class="flex items-center justify-between">
+        <span class="font-semibold text-slate-400">☁️ 云同步</span>
+        <span v-if="gistId" class="text-slate-500 truncate text-[8px] max-w-[100px]">Gist: {{ gistId }}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-1">
+        <button @click.stop="configGitHub" 
+                class="text-indigo-400 hover:text-indigo-300 active:text-indigo-200 bg-slate-800/50 hover:bg-slate-800 rounded px-1 py-2 text-center transition-colors touch-manipulation"
+                style="min-height: 36px;">🔑<span class="block text-[8px] leading-tight">配置</span></button>
+        <button @click.stop="backupToGist" 
+                class="text-emerald-400 hover:text-emerald-300 active:text-emerald-200 bg-slate-800/50 hover:bg-slate-800 rounded px-1 py-2 text-center transition-colors touch-manipulation"
+                style="min-height: 36px;">⬆️<span class="block text-[8px] leading-tight">备份</span></button>
+        <button @click.stop="restoreFromGist" 
+                class="text-amber-400 hover:text-amber-300 active:text-amber-200 bg-slate-800/50 hover:bg-slate-800 rounded px-1 py-2 text-center transition-colors touch-manipulation"
+                style="min-height: 36px;">⬇️<span class="block text-[8px] leading-tight">恢复</span></button>
+    </div>
+</div>
         <div class="p-3 border-t border-slate-800 bg-slate-950 text-[10px] text-slate-500 space-y-1 shrink-0 hidden md:block"><div class="font-semibold text-slate-400 mb-1">💡 操作提示</div><div>• 根节点 [+] 添加一级</div><div>• 开启多选批量删除节点</div><div>• 章节/科目右侧悬停可编辑/删除</div><div>• 点击图片可放大预览</div></div>
     </aside>
 
