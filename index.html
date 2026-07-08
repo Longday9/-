@@ -590,8 +590,29 @@ async function restoreFromGist() {
         const content = data.files['kaoyan_data.json']?.content;
         if (content) {
             if (confirm('云端数据将覆盖本地数据，确定恢复吗？')) {
+                // 更新数据
                 subjects.value = JSON.parse(content);
-                saveToLocal(); // 顺便保存到 localStorage
+                saveToLocal();
+
+                // 重置选择状态（关键修复）
+                selectedNode.value = null;
+                multiSelectMode.value = false;
+                selectedNodeIds.value = new Set();
+
+                // 重新选择一个有效的科目/章节
+                if (subjects.value.length > 0) {
+                    const firstSub = subjects.value[0];
+                    currentSubjectId.value = firstSub.id;
+                    if (firstSub.chapters.length > 0) {
+                        currentChapterId.value = firstSub.chapters[0].id;
+                    } else {
+                        currentChapterId.value = null;
+                    }
+                } else {
+                    currentSubjectId.value = null;
+                    currentChapterId.value = null;
+                }
+
                 alert('✅ 数据已从云端恢复！');
             }
         } else {
