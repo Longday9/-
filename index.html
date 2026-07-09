@@ -2,430 +2,547 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>考研复习知识导图工具</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>考研多级织网 · 移动端优化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* 隐藏滚动条但保持功能 */
+        [v-cloak] { display: none; }
+        .grid-bg { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; background-color: #f8fafc; }
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* 树形连线效果的简单微调 */
-        .tree-node::before {
-            content: '';
-            position: absolute;
-            left: -16px;
-            top: 24px;
-            border-left: 2px dashed #cbd5e1;
-            height: calc(100% - 12px);
-        }
-        .tree-node:last-child::before {
-            height: 16px;
+        .tree-node { cursor: pointer; user-select: none; -webkit-user-select: none; transition: all 0.2s; position: relative; z-index: 20; min-height: 44px; display: flex; align-items: center; justify-content: center; word-break: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .tree-node:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.15); z-index: 45; }
+        .tree-node.root-node { font-weight: 700; min-width: 120px; box-shadow: 0 4px 14px rgba(79,70,229,0.3); }
+        .tree-node.root-node:hover { transform: translateY(-3px) scale(1.04); }
+        .node-selected { animation: selectedGlow 2.2s infinite; z-index: 50; }
+        @keyframes selectedGlow { 0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.35); } 50% { box-shadow: 0 0 0 16px rgba(99,102,241,0.05); } }
+        .node-multi-selected { box-shadow: 0 0 0 4px rgba(245,158,11,0.6) !important; border-color: #f59e0b !important; }
+        .portal-icon { animation: portalPulse 2.5s infinite; }
+        @keyframes portalPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(147,51,234,0.5); } 50% { box-shadow: 0 0 0 8px rgba(147,51,234,0); } }
+        .connector-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; z-index: 5; box-shadow: 0 0 0 3px #e2e8f0; }
+        .connector-line-h { height: 3px; background: linear-gradient(90deg, #94a3b8 60%, #cbd5e1 100%); border-radius: 2px; flex-shrink: 0; min-width: 20px; }
+        .sidebar-overlay { transition: opacity 0.3s; }
+        .sidebar-drawer { transition: transform 0.3s; }
+        .bottom-sheet { transition: transform 0.35s; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.18); }
+        .side-panel-desktop { transition: transform 0.3s; }
+        .image-thumb { transition: all 0.2s; border: 2px solid transparent; }
+        .image-thumb:hover { border-color: #6366f1; transform: scale(1.05); }
+        @media (max-width: 767px) {
+            .tree-node { min-width: 80px; font-size: 0.75rem; padding: 0.5rem; }
+            .tree-node.root-node { min-width: 90px; font-size: 0.85rem; }
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-slate-100 text-slate-800 antialiased overflow-hidden h-screen w-screen">
+<div id="app" class="flex h-full w-full relative" v-cloak>
+    <!-- 移动端导航 -->
+    <header class="md:hidden fixed top-0 left-0 right-0 h-12 bg-white border-b border-slate-200 z-50 flex items-center px-3 gap-2 shadow-sm">
+        <button @click="toggleMobileSidebar" class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="flex-1 min-w-0 flex items-center gap-1 text-sm">
+            <span class="font-bold text-slate-800 truncate">{{ currentSubject?.name || '考研导图' }}</span>
+            <span class="text-slate-300">/</span>
+            <span class="text-slate-500 truncate text-xs">{{ currentChapter?.name || '选择章节' }}</span>
+        </div>
+        <button v-if="selectedNode" @click="deselectNode" class="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold">✕</button>
+    </header>
+    <div v-if="mobileSidebarOpen" class="sidebar-overlay fixed inset-0 bg-black/50 z-[55] md:hidden" @click="toggleMobileSidebar"></div>
 
-<div id="app" class="flex h-screen overflow-hidden" v-cloak>
-    
-    <div class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between">
-        <div>
-            <div class="p-4 border-b border-gray-200">
-                <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
-                    🎓 <span>考研复习导图</span>
-                </h1>
-                <p class="text-xs text-gray-500 mt-1">点击节点展开/隐藏内容编辑器</p>
+    <!-- 侧边栏 -->
+    <aside :class="['bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-[56] shrink-0', 'md:relative md:translate-x-0 md:w-64', 'fixed inset-y-0 left-0 w-72 sidebar-drawer', mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full']">
+        <div class="p-4 border-b border-slate-800 bg-slate-950 shrink-0"><h1 class="text-base font-bold text-white">🎯 考研全科画布</h1></div>
+        <div class="p-3 border-b border-slate-800 shrink-0">
+            <div class="flex justify-between items-center mb-2"><label class="text-[10px] font-bold text-slate-500 uppercase">科目</label><button @click="addSubject" class="text-[11px] text-indigo-400 hover:text-indigo-300">+ 添加</button></div>
+            <div class="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto no-scrollbar">
+                <button v-for="sub in subjects" :key="sub.id" @click="switchSubject(sub.id); closeMobileSidebar()" :class="['relative group px-2 py-1.5 rounded text-xs font-semibold text-left', currentSubjectId === sub.id ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200']">
+                    <span class="block pr-5 leading-relaxed">📚 {{ sub.name }}</span>
+                    <div class="absolute right-0.5 top-0.5 flex opacity-0 group-hover:opacity-100">
+                        <span @click.stop="editSubjectName(sub)" class="text-slate-400 hover:text-white text-[9px] cursor-pointer">✎</span>
+                        <span @click.stop="deleteSubject(sub)" class="text-rose-400 hover:text-rose-300 text-[9px] cursor-pointer">✕</span>
+                    </div>
+                </button>
             </div>
-            <div class="p-4 space-y-2">
-<div class="flex justify-between items-center mb-2">
-    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">当前科目</label>
-    <button @click="addSubject" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold">+ 添加科目</button>
-</div>
-                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">当前科目</label>
-                <div class="space-y-1">
-                    <button v-for="sub in subjects" :key="sub.id"
-                            @click="switchSubject(sub.id)"
-                            :class="['w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors', 
-                                    currentSubjectId === sub.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100']">
-                        {{ sub.name }}
-                    </button>
+        </div>
+        <div class="p-3 flex-1 overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-2"><label class="text-[10px] font-bold text-slate-500 uppercase">章节</label><button @click="addChapter" class="text-[11px] text-indigo-400 hover:text-indigo-300" :disabled="!currentSubject">+ 新增</button></div>
+            <div class="space-y-1">
+                <div v-for="(chap, idx) in (currentSubject?.chapters || [])" :key="chap.id" class="group flex items-center justify-between px-3 py-2.5 rounded-lg text-xs cursor-pointer" :class="currentChapterId === chap.id ? 'bg-slate-800 text-white font-bold border-l-[3px] border-indigo-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'">
+                    <span class="truncate flex-1" @click="switchChapter(chap.id); closeMobileSidebar()">§{{ idx+1 }} {{ chap.name }}</span>
+                    <div class="flex opacity-0 group-hover:opacity-100">
+                        <span @click.stop="editChapterName(chap)" class="text-slate-400 hover:text-white text-[10px] cursor-pointer">✎</span>
+                        <span @click.stop="deleteChapter(chap)" class="text-rose-400 hover:text-rose-300 text-[10px] cursor-pointer">✕</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="p-4 border-t border-gray-200 space-y-2">
-            <button @click="exportData" class="w-full py-1.5 text-xs text-center border border-gray-300 rounded hover:bg-gray-50 transition">导出备份 (JSON)</button>
-            <button @click="importData" class="w-full py-1.5 text-xs text-center border border-gray-300 rounded hover:bg-gray-50 transition text-red-600">导入备份</button>
-            <p class="text-[10px] text-gray-400 text-center">数据自动实时保存在本地浏览器</p>
+        <!-- 云同步 -->
+        <div class="p-2 border-t border-slate-800 bg-slate-950 text-[9px] space-y-1 shrink-0">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-semibold">☁️ 云同步</span>
+                <span v-if="gistId" class="text-slate-500 text-[8px] truncate max-w-[120px] cursor-pointer" @click="copyGistId" title="点击复制 Gist ID">Gist: {{ gistId }}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1">
+                <button @click.stop="openTokenDialog" class="text-indigo-400 hover:text-indigo-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">🔑配置</button>
+                <button @click.stop="backupToGist" class="text-emerald-400 hover:text-emerald-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬆️备份</button>
+                <button @click.stop="restoreFromGist" class="text-amber-400 hover:text-amber-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬇️恢复</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主画布 -->
+    <main class="flex-1 flex flex-col relative overflow-hidden z-10 min-w-0 pt-12 md:pt-0">
+        <div class="hidden md:flex h-13 bg-white border-b border-slate-200 px-5 items-center justify-between shadow-sm z-30 shrink-0">
+            <div class="flex items-center gap-2"><span class="text-sm font-bold">{{ currentSubject?.name || '未选择' }}</span><span class="text-slate-300">/</span><span class="text-sm text-slate-600">{{ currentChapter?.name || '未选择章节' }}</span></div>
+            <div class="flex items-center gap-2">
+                <div v-if="selectedNode" class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border">
+                    <button @click="markStatus('red')" class="px-2 py-1 text-xs bg-rose-500 text-white rounded-md">🔴</button>
+                    <button @click="markStatus('yellow')" class="px-2 py-1 text-xs bg-amber-400 text-slate-900 rounded-md">🟡</button>
+                    <button @click="markStatus('green')" class="px-2 py-1 text-xs bg-emerald-500 text-white rounded-md">🟢</button>
+                    <button @click="markStatus('star')" class="px-2 py-1 text-xs bg-purple-500 text-white rounded-md">⭐</button>
+                    <button @click="markStatus('clear')" class="text-xs text-slate-400 ml-1">还原</button>
+                </div>
+                <button @click="toggleMultiSelectMode" :class="multiSelectMode ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'" class="px-3 py-1.5 text-xs rounded-lg">多选节点</button>
+            </div>
+        </div>
+
+        <div class="flex-1 relative overflow-hidden grid-bg z-10" @click.self="deselectNode">
+            <div class="absolute inset-0 p-4 md:p-8 overflow-auto flex items-start justify-start gap-5 md:gap-8 no-scrollbar" style="padding-bottom: 120px;">
+                <div v-if="!currentChapter" class="text-slate-400 text-sm flex flex-col items-center gap-3 w-full text-center py-20"><span class="text-5xl">📖</span><p>请选择章节</p></div>
+                <template v-if="currentChapter">
+                    <tree-node :node="currentChapter.tree" :depth="0" @add-first-level="addFirstLevelNode" />
+                </template>
+            </div>
+
+            <!-- 底部操作栏 -->
+            <div class="absolute bottom-3 md:bottom-5 left-3 md:left-5 z-80 flex gap-2 bg-white/95 backdrop-blur p-1.5 md:p-2 rounded-xl shadow-lg border">
+                <button @click="addChildNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'" class="px-3 py-2 text-xs rounded-lg">📥 衍生</button>
+                <button @click="deleteNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-300'" class="px-3 py-2 text-xs rounded-lg">✕ 删除</button>
+                <button v-if="multiSelectMode && selectedNodeIds.size > 0" @click="deleteSelectedNodes" class="px-3 py-2 text-xs bg-rose-600 text-white rounded-lg">🗑️ 删除选中 ({{ selectedNodeIds.size }})</button>
+                <button @click="deselectNode" class="px-3 py-2 text-xs bg-slate-200 rounded-lg">↩</button>
+            </div>
+
+            <!-- 移动端标记栏 -->
+            <div v-if="selectedNode && !multiSelectMode" class="md:hidden absolute bottom-3 right-3 z-80 flex gap-1 bg-white/95 backdrop-blur p-1.5 rounded-xl shadow-lg border">
+                <button @click="markStatus('red')" class="w-8 h-8 flex items-center justify-center bg-rose-500 text-white rounded-lg text-sm active:scale-90">🔴</button>
+                <button @click="markStatus('yellow')" class="w-8 h-8 flex items-center justify-center bg-amber-400 text-slate-900 rounded-lg text-sm active:scale-90">🟡</button>
+                <button @click="markStatus('green')" class="w-8 h-8 flex items-center justify-center bg-emerald-500 text-white rounded-lg text-sm active:scale-90">🟢</button>
+                <button @click="markStatus('star')" class="w-8 h-8 flex items-center justify-center bg-purple-500 text-white rounded-lg text-sm active:scale-90">⭐</button>
+                <button @click="markStatus('clear')" class="w-8 h-8 flex items-center justify-center bg-slate-200 text-slate-500 rounded-lg text-xs active:scale-90">↺</button>
+            </div>
+
+            <!-- 桌面编辑面板 -->
+            <div :class="['hidden md:flex w-80 h-full bg-white border-l shadow-2xl flex-col absolute right-0 top-0 z-50 side-panel-desktop', selectedNode && !multiSelectMode ? 'translate-x-0' : 'translate-x-full']">
+                <div v-if="selectedNode && !multiSelectMode" class="flex flex-col h-full overflow-hidden">
+                    <div class="p-4 border-b bg-slate-50 flex justify-between items-center"><span class="text-xs font-bold">✍️ {{ selectedNode.label }}</span><button @click="deselectNode" class="text-slate-400">✕</button></div>
+                    <div class="p-4 flex-1 overflow-y-auto no-scrollbar space-y-4">
+                        <div><label class="text-[11px] font-bold text-slate-400 mb-1">考点名称</label><input type="text" v-model="selectedNode.label" @input="saveToLocal" class="w-full px-3 py-2 border rounded-md text-sm"></div>
+                        <div v-if="selectedNode.status && selectedNode.status !== 'clear'" class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-500">掌握度:</span>
+                            <span v-if="selectedNode.status==='red'" class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">🔴 不熟</span>
+                            <span v-else-if="selectedNode.status==='yellow'" class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">🟡 模糊</span>
+                            <span v-else-if="selectedNode.status==='green'" class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">🟢 掌握</span>
+                            <span v-else-if="selectedNode.status==='star'" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">⭐ 重点</span>
+                        </div>
+                        <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
+                            <label class="text-[11px] font-bold text-indigo-900 mb-1">🌌 知识传送门</label>
+                            <select v-model="selectedNode.targetPortalId" @change="saveToLocal" class="w-full mt-1 p-1.5 text-xs bg-white border rounded-md">
+                                <option :value="null">-- 绑定跨界考点 --</option>
+                                <optgroup v-for="chap in allChaptersFlat" :key="chap.chapterId" :label="chap.subjectName + ' › ' + chap.chapterName">
+                                    <option v-for="flatNode in chap.flatNodes" :key="flatNode.id" :disabled="flatNode.id === selectedNode.id" :value="chap.subjectId + '|' + chap.chapterId + '|' + flatNode.id">{{ flatNode.label }}</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <textarea v-model="selectedNode.note" @input="saveToLocal" placeholder="背诵内容..." class="w-full h-32 p-3 border rounded-md text-xs resize-none"></textarea>
+                        <div class="border border-dashed p-2 rounded-md">
+                            <div class="flex justify-between"><span class="text-[11px] font-bold">📷 图片笔记</span><label class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 rounded-md"><span>＋ 上传图片</span><input type="file" accept="image/*" multiple class="hidden" @change="handleImageUpload"></label></div>
+                            <div v-if="selectedNode.images && selectedNode.images.length > 0" class="grid grid-cols-2 gap-2 mt-1">
+                                <div v-for="(img, idx) in selectedNode.images" :key="img.id" class="relative group aspect-square rounded overflow-hidden" @click.stop="previewImage(img.dataUrl)">
+                                    <img :src="img.dataUrl" class="w-full h-full object-cover">
+                                    <button @click.stop="removeImage(idx)" class="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-4 h-4 text-[10px] opacity-0 group-hover:opacity-100">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 移动端编辑面板（不遮挡按钮） -->
+            <div :class="['md:hidden fixed inset-0 z-[60] bg-black/50 transition-opacity', selectedNode && !multiSelectMode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none']" @click="deselectNode"></div>
+            <div :class="['md:hidden fixed bottom-0 left-0 right-0 z-[70] bottom-sheet bg-white overflow-hidden flex flex-col transition-transform', selectedNode && !multiSelectMode ? 'translate-y-0' : 'translate-y-full']" style="max-height: 75vh;">
+                <div v-if="selectedNode && !multiSelectMode" class="flex flex-col h-full" style="max-height: 75vh;">
+                    <div class="flex justify-center pt-2 pb-1 shrink-0"><div class="w-10 h-1 bg-slate-300 rounded-full"></div></div>
+                    <div class="px-4 pb-2 flex justify-between items-center shrink-0 border-b border-slate-100">
+                        <span class="text-sm font-bold text-slate-800 truncate">✍️ {{ selectedNode.label }}</span>
+                        <button @click="deselectNode" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                    </div>
+                    <div class="p-4 flex-1 overflow-y-auto no-scrollbar space-y-3" style="padding-bottom: 140px;">
+                        <input type="text" v-model="selectedNode.label" @input="saveToLocal" class="w-full px-3 py-2.5 border rounded-lg font-bold text-sm" placeholder="考点名称">
+                        <div v-if="selectedNode.status && selectedNode.status !== 'clear'" class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-500">掌握度:</span>
+                            <span v-if="selectedNode.status==='red'" class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">🔴 不熟</span>
+                            <span v-else-if="selectedNode.status==='yellow'" class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">🟡 模糊</span>
+                            <span v-else-if="selectedNode.status==='green'" class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">🟢 掌握</span>
+                            <span v-else-if="selectedNode.status==='star'" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">⭐ 重点</span>
+                        </div>
+                        <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
+                            <label class="text-[11px] font-bold text-indigo-900 mb-1">🌌 传送门</label>
+                            <select v-model="selectedNode.targetPortalId" @change="saveToLocal" class="w-full mt-1 p-2 text-xs bg-white border rounded-md">
+                                <option :value="null">-- 绑定跨界考点 --</option>
+                                <optgroup v-for="chap in allChaptersFlat" :key="chap.chapterId" :label="chap.subjectName + ' › ' + chap.chapterName">
+                                    <option v-for="flatNode in chap.flatNodes" :key="flatNode.id" :disabled="flatNode.id === selectedNode.id" :value="chap.subjectId + '|' + chap.chapterId + '|' + flatNode.id">{{ flatNode.label }}</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <textarea v-model="selectedNode.note" @input="saveToLocal" placeholder="背诵内容 / 核心公式..." class="w-full h-28 p-3 border rounded-lg text-xs resize-none"></textarea>
+                        <div class="border border-dashed border-slate-300 rounded-md p-2 bg-white space-y-2">
+                            <div class="flex items-center justify-between"><span class="text-[11px] font-bold text-slate-400">📷 图片笔记</span><label class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-medium px-3 py-2 rounded-md transition-colors touch-manipulation"><span>＋ 上传</span><input type="file" accept="image/*" multiple class="hidden" @change="handleImageUpload"></label></div>
+                            <div v-if="selectedNode.images && selectedNode.images.length > 0" class="grid grid-cols-2 gap-2 mt-1">
+                                <div v-for="(img, idx) in selectedNode.images" :key="img.id" class="relative group aspect-square rounded overflow-hidden image-thumb" @click.stop="previewImage(img.dataUrl)">
+                                    <img :src="img.dataUrl" class="w-full h-full object-cover">
+                                    <button @click.stop="removeImage(idx)" class="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow">✕</button>
+                                </div>
+                            </div>
+                            <div v-else class="text-[10px] text-slate-400 text-center py-1">暂无图片</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Token 配置弹窗 -->
+    <div v-if="showTokenDialog" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" @click.self="showTokenDialog = false">
+        <div class="bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-600">
+            <div class="text-white font-bold mb-3 text-sm">🔑 配置 GitHub 同步</div>
+            <label class="text-slate-400 text-[10px] mb-1 block">GitHub Token</label>
+            <input type="password" v-model="tempToken" placeholder="粘贴 Token..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
+            <label class="text-slate-400 text-[10px] mb-1 block">Gist ID（已有则填入，否则自动创建）</label>
+            <input type="text" v-model="tempGistId" placeholder="粘贴 Gist ID..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
+            <div class="flex justify-between items-center mb-3">
+                <button @click="fetchMyGists" class="text-indigo-400 text-xs underline">忘记 ID？查找已有 Gist</button>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button @click="showTokenDialog = false" class="px-4 py-2 text-xs bg-slate-600 text-white rounded-lg">取消</button>
+                <button @click="saveTokenConfig" class="px-4 py-2 text-xs bg-indigo-600 text-white rounded-lg">保存</button>
+            </div>
         </div>
     </div>
 
-    <div class="flex-1 flex overflow-hidden">
-        
-        <div class="flex-1 overflow-auto p-8 no-scrollbar bg-slate-50">
-            <div class="max-w-3xl mx-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-2xl font-bold text-gray-900">{{ currentSubject.name }} 知识架构</h2>
-                    <button @click="addRootNode" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 shadow-sm transition">
-                        + 添加根主干
-                    </button>
-                </div>
-
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div v-if="currentSubject.tree.length === 0" class="text-center py-12 text-gray-400 text-sm">
-                        暂无节点，点击右上方按钮开始构建你的知识树
-                    </div>
-                    <tree-item 
-                        v-for="(node, index) in currentSubject.tree" 
-                        :key="node.id" 
-                        :node="node" 
-                        :active-id="activeNodeId"
-                        @select="selectNode"
-                        @add-child="addChildNode"
-                        @delete-node="deleteNode(currentSubject.tree, index)">
-                    </tree-item>
-                </div>
-            </div>
-        </div>
-
-        <div :class="['w-96 bg-white border-l border-gray-200 flex flex-col transition-all duration-200', 
-                     activeNode ? 'translate-x-0' : 'translate-x-full w-0 overflow-hidden']">
-            <div v-if="activeNode" class="h-full flex flex-col">
-                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <span class="text-xs font-semibold px-2 py-1 bg-indigo-100 text-indigo-800 rounded">内容编辑器</span>
-                    <button @click="activeNodeId = null" class="text-gray-400 hover:text-gray-600 text-sm">✕ 关闭</button>
-                </div>
-                
-                <div class="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">节点名称</label>
-                        <input type="text" v-model="activeNode.label" @input="saveToLocalStorage"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-base">
-<div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg my-2">
-    <label class="block text-[11px] font-bold text-indigo-900">🌌 知识联想传送门</label>
-    <select v-model="selectedNode.targetPortalId" @change="saveToLocal" class="w-full mt-1 p-1 text-xs bg-white border rounded text-slate-700">
-        <option :value="undefined">-- 点击绑定跨界考点 --</option>
-        <optgroup v-for="sub in subjects" :label="sub.name">
-            <optgroup v-for="chap in sub.chapters" :label="'   └ ' + chap.name">
-                <option v-for="flatNode in flattenTree(chap.tree)" :key="flatNode.id" :disabled="flatNode.id === selectedNode.id" :value="sub.id + '|' + chap.id + '|' + flatNode.id">
-                    {{ flatNode.label }}
-                </option>
-            </optgroup>
-        </optgroup>
-    </select>
-</div>
-                    </div>
-                    
-                    <div class="flex-1 flex flex-col">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">
-                            背诵内容 / 核心笔记 
-                            <span class="text-[10px] text-gray-400 font-normal">(支持换行，可放入公式或考点)</span>
-                        </label>
-                        <textarea v-model="activeNode.content" @input="saveToLocalStorage"
-                                  placeholder="在此输入该节点的详细笔记、公式、错题总结或背诵口诀..."
-                                  class="w-full flex-1 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm resize-none leading-relaxed bg-slate-50"></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+    <!-- 图片全屏预览 -->
+    <div v-if="previewImageUrl" class="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" @click="previewImageUrl = null">
+        <img :src="previewImageUrl" class="max-w-full max-h-full object-contain rounded-lg" @click.stop />
     </div>
 </div>
 
 <script>
-const { createApp, ref, computed, watch, onMounted } = Vue;
+    const { createApp, ref, computed, onMounted, nextTick, provide, inject } = Vue;
 
-// 树形节点组件（递归调用自身）
-const TreeItem = {
-    name: 'TreeItem',
-    props: ['node', 'activeId'],
-    emits: ['select', 'addChild', 'deleteNode'],
-    template: `
-        <div class="relative pl-6 tree-node">
-            <div class="flex items-center gap-2 my-2 group">
-                <div @click="$emit('select', node)" 
-                     :class="['px-3 py-1.5 rounded-md cursor-pointer border transition-all text-sm flex items-center gap-1.5 shadow-sm',
-                              activeId === node.id 
-                              ? 'bg-indigo-600 text-white border-indigo-600' 
-                              : 'bg-gray-50 hover:bg-indigo-50 text-gray-700 border-gray-200 hover:border-indigo-300']">
-                    <span v-if="node.children && node.children.length" class="text-[10px] opacity-70">
-                        {{ node.expanded ? '▼' : '►' }}
-                    </span>
-                    <span class="font-medium">{{ node.label || '新节点' }}</span>
-                    <span v-if="node.content" class="text-[10px] bg-emerald-500 text-white px-1 rounded scale-90">📝 笔记</span>
-                </div>
+    const TreeNode = {
+        name: 'TreeNode',
+        props: { node: Object, depth: Number },
+        emits: ['add-first-level'],
+        setup(props, { emit }) {
+            const selectNode = inject('selectNode');
+            const handlePortalJump = inject('handlePortalJump');
+            const getNodeStyle = inject('getNodeStyle');
+            const selectedNodeId = inject('selectedNodeId');
+            const multiSelectMode = inject('multiSelectMode');
+            const selectedNodeIds = inject('selectedNodeIds');
+            const toggleNodeMultiSelect = inject('toggleNodeMultiSelect');
 
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <button @click.stop="$emit('addChild', node)" class="p-1 text-xs text-indigo-600 hover:bg-indigo-50 rounded" title="添加子节点">＋</button>
-                    <button @click.stop="$emit('deleteNode')" class="p-1 text-xs text-red-500 hover:bg-red-50 rounded" title="删除此节点">✕</button>
-                </div>
-            </div>
+            const isSelected = computed(() => selectedNodeId.value === props.node.id);
+            const isMultiSelected = computed(() => multiSelectMode.value && selectedNodeIds.value.has(props.node.id));
+            const hasContent = computed(() => props.node.note || (props.node.images && props.node.images.length > 0));
 
-            <div v-if="node.children && node.children.length && node.expanded" class="ml-2">
-                <tree-item 
-                    v-for="(child, index) in node.children<button v-if="child.targetPortalId" @click.stop="handlePortalJump(child.targetPortalId)" class="mt-1 text-[10px] bg-purple-600 text-white px-1 py-0.5 rounded shadow">
-    🌌 传送
-</button>" 
-                    :key="child.id" 
-                    :node="child"
-                    :active-id="activeId"
-                    @select="$emit('select', $event)"
-                    @add-child="$emit('addChild', $event)"
-                    @delete-node="node.children.splice(index, 1)">
-                </tree-item>
-            </div>
-        </div>
-    `
-};
-
-createApp({
-    components: { TreeItem },
-    setup() {
-        // 初始化默认内置考研科目模板
-        const defaultSubjects = [
-            {
-                id: '408',
-                name: '计算机408',
-                tree: [
-                    {
-                        id: '1', label: '数据结构', expanded: true, content: '大题常考：二叉树遍历、图的算法（Dijkstra/Prim）、各种排序算法性能对比。',
-                        children: [
-                            { id: '1-1', label: '线性表', expanded: true, content: '顺序表与链表的插入删除时间复杂度。', children: [] },
-                            { id: '1-2', label: '树与二叉树', expanded: true, content: '平衡二叉树（AVL）、红黑树的基本性质。', children: [] }
-                        ]
-                    },
-                    { id: '2', label: '计算机组成原理', expanded: false, content: '核心：数据的表示与运算、存储器层次结构、CPU指令流水线。', children: [] },
-                    { id: '3', label: '操作系统', expanded: false, content: '核心：PV操作同步互斥、虚拟内存页面置换算法、磁盘调度。', children: [] },
-                    { id: '4', label: '计算机网络', expanded: false, content: '核心：IP子网划分、TCP流量控制与拥塞控制、三次握手。', children: [] }
-                ]
-            },
-            {
-                id: 'math',
-                name: '考研数学',
-                tree: [
-                    { id: 'm1', label: '高等数学', expanded: true, content: '核心定理：泰勒公式、中值定理、定积分的应用。', children: [] },
-                    { id: 'm2', label: '线性代数', expanded: false, content: '矩阵的秩、特征值与特征向量、二次型。', children: [] }
-                ]
-            },
-            {
-                id: 'politics',
-                name: '考研政治',
-                tree: [
-                    { id: 'p1', label: '马原', expanded: true, content: '唯物辩证法两大总特征：联系和发展。三规律：对立统一、质量互变、否定之否定。', children: [] },
-                    { id: 'p2', label: '毛中特', expanded: false, content: '新时代中国特色社会主义思想核心内容。', children: [] }
-                ]
-            }
-        ];
-
-        const subjects = ref([]);
-        const currentSubjectId = ref('408');
-        const activeNodeId = ref(null);
-
-        // 从 LocalStorage 加载或初始化
-        onMounted(() => {
-            const savedData = localStorage.getItem('kaoyan_mindmap_data');
-            if (savedData) {
-                try {
-                    subjects.value = JSON.parse(savedData);
-                } catch (e) {
-                    subjects.value = defaultSubjects;
-                }
-            } else {
-                subjects.value = defaultSubjects;
-            }
-        });
-
-        // 当前选中的科目数据
-        const currentSubject = computed(() => {
-            return subjects.value.find(s => s.id === currentSubjectId.value) || subjects.value[0] || { name: '', tree: [] };
-        });
-
-        // 当前正在编辑的节点对象
-        const activeNode = computed(() => {
-            if (!activeNodeId.value) return null;
-            return findNodeById(currentSubject.value.tree, activeNodeId.value);
-        });
-
-        // 辅助函数：通过ID递归查找节点
-        function findNodeById(nodes, id) {
-            for (let node of nodes) {
-                if (node.id === id) return node;
-                if (node.children && node.children.length) {
-                    const found = findNodeById(node.children, id);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        // 切换科目
-        function switchSubject(id) {
-            currentSubjectId.value = id;
-            activeNodeId.value = null;
-        }
-
-        // 点击节点：再次点击同一个节点则隐藏侧边栏
-        function selectNode(node) {
-            if (activeNodeId.value === node.id) {
-                activeNodeId.value = null; // 再次点击隐藏
-            } else {
-                activeNodeId.value = node.id; // 点击展开/编辑
-                node.expanded = !node.expanded; // 顺便联动折叠/展开子节点
-            }
-        }
-
-        // 添加根节点
-        function addRootNode() {
-            const newId = 'root_' + Date.now();
-            currentSubject.value.tree.push({
-                id: newId,
-                label: '新主干考点',
-                content: '',
-                expanded: true,
-                children: []
+            const nodeSizeClass = computed(() => {
+                if (props.depth === 0) return 'px-4 py-3 rounded-xl border-2 text-sm md:text-base max-w-[140px] md:max-w-[180px] root-node';
+                if (props.depth === 1) return 'px-3 py-2 rounded-lg border text-xs md:text-sm w-36 md:w-44';
+                return 'px-2 py-1.5 rounded-md border text-xs w-32 md:w-40';
             });
-            activeNodeId.value = newId;
-            saveToLocalStorage();
-        }
 
-        // 添加子节点
-function addChildNode() {
-    if (!selectedNode.value) return;
-    
-    // 如果当前选中的节点还没有下级容器，给它初始化一个
-    if (!selectedNode.value.children) {
-        selectedNode.value.children = [];
-    }
-    
-    const newId = 'n_' + Date.now();
-    // 关键改变：直接 push 到当前选中的节点下面，实现无限级衍生！
-    selectedNode.value.children.push({
-        id: newId,
-        label: '下级细分考点',
-        status: 'clear',
-        note: '',
-        children: []
-    });
-    
-    // 自动追踪选中新创建的节点
-    selectedNode.value = selectedNode.value.children[selectedNode.value.children.length - 1];
-    saveToLocal();
-}
-        // 删除根节点（子节点的删除在组件内直接处理了）
-        function deleteNode(parentArray, index) {
-            if (confirm('确定要删除这个节点及其所有子节点吗？')) {
-                parentArray.splice(index, 1);
-                activeNodeId.value = null;
-                saveToLocalStorage();
+            function onClickNode() {
+                if (multiSelectMode.value) toggleNodeMultiSelect(props.node);
+                else selectNode(props.node);
             }
-        }
 
-        // 数据持久化
-        function saveToLocalStorage() {
-            localStorage.setItem('kaoyan_mindmap_data', JSON.stringify(subjects.value));
-        }
+            return { isSelected, isMultiSelected, hasContent, nodeSizeClass, onClickNode, getNodeStyle,handlePortalJump };
+        },
+        template: `
+            <div class="flex items-center gap-2 md:gap-3 relative z-10">
+                <template v-if="depth > 0">
+                    <div class="connector-line-h w-3 md:w-5"></div>
+                    <div class="connector-dot"></div>
+                </template>
+                <div @click.stop="onClickNode" :style="getNodeStyle(node)"
+                     :class="['tree-node shrink-0 relative', nodeSizeClass, isSelected ? 'node-selected ring-[3px] ring-indigo-500/50 border-indigo-600' : '', isMultiSelected ? 'node-multi-selected' : '']">
+                    <div class="flex flex-col items-center w-full">
+                        <div class="flex items-center gap-1">
+                            <span class="truncate">{{ node.label }}</span>
+                            <span v-if="node.targetPortalId" @click.stop="handlePortalJump(node.targetPortalId)" class="portal-icon text-purple-600">🌌</span>
+                        </div>
+                        <div v-if="hasContent" class="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-0.5"></div>
+                        <span v-if="isMultiSelected" class="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-500 text-white rounded-full text-[10px] font-bold">✓</span>
+                    </div>
+                    <button v-if="depth === 0" @click.stop="emit('add-first-level')" class="absolute -bottom-2 -right-2 w-7 h-7 bg-indigo-600 text-white rounded-full text-lg font-bold shadow-lg">+</button>
+                </div>
+                <template v-if="node.children && node.children.length > 0">
+                    <div class="flex flex-col gap-1.5 pl-3 md:pl-5 py-0.5 shrink-0" :style="{ borderLeft: depth >= 0 ? '2px solid #cbd5e1' : 'none' }">
+                        <tree-node v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1" />
+                    </div>
+                </template>
+                <div v-else-if="depth > 0" class="text-[10px] text-slate-300 italic w-24 text-center border border-dashed py-1 bg-white/50">下级</div>
+            </div>
+        `
+    };
 
-        // 深度监听整个数据变化自动保存
-        watch(subjects, () => {
-            saveToLocalStorage();
-        }, { deep: true });
+    const app = createApp({
+        setup() {
+            // ==================== 数据 ====================
+            const subjects = ref([
+                { id: '408', name: '计算机408', chapters: [
+                    { id: 'c1', name: '线性表', tree: { id: 'root_1', label: '线性表', status: 'clear', note: '', images: [], children: [
+                        { id: 'ch_1', label: '顺序表', status: 'red', note: '随机访问O(1)', images: [], children: [] },
+                        { id: 'ch_2', label: '链表', status: 'yellow', note: '插入删除O(1)', images: [], children: [] }
+                    ]}}
+                ]},
+                { id: 'math', name: '考研数学', chapters: [
+                    { id: 'm1', name: '极限与连续', tree: { id: 'root_m1', label: '极限与连续', status: 'clear', note: '', images: [], children: [] } }
+                ]}
+            ]);
+            const currentSubjectId = ref('408');
+            const currentChapterId = ref('c1');
+            const selectedNode = ref(null);
+            const mobileSidebarOpen = ref(false);
+            const multiSelectMode = ref(false);
+            const selectedNodeIds = ref(new Set());
+            const previewImageUrl = ref(null);
 
-        // 备份导出
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(subjects.value, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `考研复习导图备份_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
+            // 云同步
+            const gistId = ref(localStorage.getItem('gist_id') || '');
+            const githubToken = ref(localStorage.getItem('github_token') || '');
+            const showTokenDialog = ref(false);
+            const tempToken = ref('');
+            const tempGistId = ref('');
 
-        // 备份导入
-        function importData() {
-            const jsonStr = prompt("请粘贴之前导出的 JSON 备份文本（警告：这会覆盖当前的所有数据）：");
-            if (jsonStr) {
-                try {
-                    const parsed = JSON.parse(jsonStr);
-                    if (Array.isArray(parsed)) {
-                        subjects.value = parsed;
-                        saveToLocalStorage();
-                        alert("导入成功！");
-                    } else {
-                        alert("格式不正确，请确保复制的是完整的备份文本。");
+            const currentSubject = computed(() => subjects.value.find(s => s.id === currentSubjectId.value));
+            const currentChapter = computed(() => currentSubject.value?.chapters.find(c => c.id === currentChapterId.value) || null);
+            const allChaptersFlat = computed(() => {
+                const result = [];
+                for (const sub of subjects.value)
+                    for (const chap of sub.chapters)
+                        result.push({ subjectId: sub.id, subjectName: sub.name, chapterId: chap.id, chapterName: chap.name, flatNodes: flattenTree(chap.tree) });
+                return result;
+            });
+
+            function flattenTree(root) { const r = []; (function t(n) { r.push({ id: n.id, label: n.label }); if (n.children) n.children.forEach(t); })(root); return r; }
+
+            provide('selectNode', (node) => { if (!multiSelectMode.value) selectedNode.value = node; });
+            provide('handlePortalJump', (portalStr) => {
+                if (!portalStr) return;
+                const [subId, chapId, nodeId] = portalStr.split('|');
+                currentSubjectId.value = subId;
+                currentChapterId.value = chapId;
+selectedNode.value = null;      // 关闭编辑面板
+    closeMobileSidebar();
+                nextTick(() => {
+                    const target = findNodeById(currentChapter.value?.tree, nodeId);
+                    if (target) selectedNode.value = target;
+                });
+            });
+            provide('getNodeStyle', (node) => {
+                if (!node) return {};
+                if (node.status === 'red') return { backgroundColor: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' };
+                if (node.status === 'yellow') return { backgroundColor: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' };
+                if (node.status === 'green') return { backgroundColor: '#d1fae5', borderColor: '#10b981', color: '#065f46' };
+                if (node.status === 'star') return { backgroundColor: '#ede9fe', borderColor: '#8b5cf6', color: '#5b21b6' };
+                if (node.id?.startsWith('root_')) return { backgroundColor: '#4f46e5', borderColor: '#4338ca', color: '#ffffff' };
+                return { backgroundColor: '#ffffff', borderColor: '#cbd5e1', color: '#334155' };
+            });
+            provide('selectedNodeId', computed(() => selectedNode.value?.id));
+            provide('multiSelectMode', multiSelectMode);
+            provide('selectedNodeIds', selectedNodeIds);
+            provide('toggleNodeMultiSelect', (node) => {
+                if (multiSelectMode.value) {
+                    const newSet = new Set(selectedNodeIds.value);
+                    if (newSet.has(node.id)) newSet.delete(node.id);
+                    else newSet.add(node.id);
+                    selectedNodeIds.value = newSet;
+                }
+            });
+
+            onMounted(() => {
+                const saved = localStorage.getItem('kaoyan_infinite_v3');
+                if (saved) {
+                    try {
+                        const p = JSON.parse(saved);
+                        if (Array.isArray(p) && p.length) {
+                            p.forEach(s => s.chapters?.forEach(c => migrate(c.tree)));
+                            subjects.value = p;
+                        }
+                    } catch (e) {}
+                }
+                validateSelection();
+            });
+            function migrate(node) { if (!node.images) node.images = []; if (node.children) node.children.forEach(migrate); }
+            function validateSelection() {
+                if (!currentSubject.value && subjects.value.length) currentSubjectId.value = subjects.value[0].id;
+                if (currentSubject.value && !currentChapter.value && currentSubject.value.chapters.length) currentChapterId.value = currentSubject.value.chapters[0].id;
+            }
+
+            function switchSubject(id) { currentSubjectId.value = id; selectedNode.value = null; const sub = subjects.value.find(s => s.id === id); if (sub?.chapters.length) currentChapterId.value = sub.chapters[0].id; else currentChapterId.value = null; }
+            function switchChapter(id) { selectedNode.value = null; currentChapterId.value = id; }
+            function deselectNode() { selectedNode.value = null; selectedNodeIds.value = new Set(); multiSelectMode.value = false; }
+            function toggleMobileSidebar() { mobileSidebarOpen.value = !mobileSidebarOpen.value; }
+            function closeMobileSidebar() { mobileSidebarOpen.value = false; }
+            function toggleMultiSelectMode() { multiSelectMode.value = !multiSelectMode.value; if (multiSelectMode.value) selectedNode.value = null; }
+            function deleteSelectedNodes() {
+                if (!currentChapter.value) return;
+                const ids = Array.from(selectedNodeIds.value);
+                if (ids.length && confirm(`删除 ${ids.length} 个节点？`)) {
+                    ids.forEach(id => removeRecursive(currentChapter.value.tree, id));
+                    selectedNodeIds.value = new Set();
+                    multiSelectMode.value = false;
+                    saveToLocal();
+                }
+            }
+            function addFirstLevelNode() { if(!currentChapter.value) return; const root = currentChapter.value.tree; const label = prompt("一级考点名称："); if(label?.trim()) { if(!root.children) root.children=[]; root.children.push({ id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] }); selectedNode.value = root.children[root.children.length-1]; saveToLocal(); } }
+            function addChildNode() { if(!selectedNode.value) return; const label = prompt("下级考点名称："); if(label?.trim()) { if(!selectedNode.value.children) selectedNode.value.children=[]; const n = { id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] }; selectedNode.value.children.push(n); selectedNode.value = n; saveToLocal(); } }
+            function deleteNode() { if(!selectedNode.value || selectedNode.value.id.startsWith('root_')) return; if(confirm('删除「'+selectedNode.value.label+'」？')) { if(!currentChapter.value) return; if(removeRecursive(currentChapter.value.tree, selectedNode.value.id)) { selectedNode.value=null; saveToLocal(); } } }
+            function removeRecursive(parent, targetId) { if(!parent?.children) return false; const idx = parent.children.findIndex(c=>c.id===targetId); if(idx!==-1) { parent.children.splice(idx,1); return true; } return parent.children.some(c=>removeRecursive(c,targetId)); }
+            function findNodeById(root, id) { if(!root) return null; if(root.id===id) return root; if(root.children) for(let c of root.children) { const r=findNodeById(c,id); if(r) return r; } return null; }
+            function addSubject() { const name = prompt('科目名称：'); if(name?.trim()) { const id='sub_'+Date.now(); subjects.value.push({id, name:name.trim(), chapters:[]}); switchSubject(id); saveToLocal(); } }
+            function addChapter() { if(!currentSubject.value) return; const name = prompt('章节名称：'); if(name?.trim()) { const cid='c_'+Date.now(); const trimmed=name.trim(); currentSubject.value.chapters.push({ id:cid, name:trimmed, tree:{ id:'root_'+Date.now(), label:trimmed, status:'clear', note:'', images:[], children:[] } }); currentChapterId.value=cid; selectedNode.value=null; saveToLocal(); } }
+            function editSubjectName(sub) { const newName = prompt('修改科目名称：', sub.name); if (newName?.trim()) { sub.name = newName.trim(); saveToLocal(); } }
+            function deleteSubject(sub) { if (confirm(`删除科目「${sub.name}」？`)) { const idx = subjects.value.findIndex(s => s.id === sub.id); if (idx !== -1) { subjects.value.splice(idx, 1); if (currentSubjectId.value === sub.id) { if (subjects.value.length) { switchSubject(subjects.value[0].id); } else { currentSubjectId.value = null; currentChapterId.value = null; } } saveToLocal(); } } }
+            function editChapterName(chap) { const newName = prompt('修改章节名称：', chap.name); if (newName?.trim()) { chap.name = newName.trim(); if (chap.tree) chap.tree.label = newName.trim(); saveToLocal(); } }
+            function deleteChapter(chap) { if (!currentSubject.value) return; if (confirm(`删除章节「${chap.name}」？`)) { const idx = currentSubject.value.chapters.findIndex(c => c.id === chap.id); if (idx !== -1) { currentSubject.value.chapters.splice(idx, 1); if (currentChapterId.value === chap.id) { if (currentSubject.value.chapters.length) currentChapterId.value = currentSubject.value.chapters[0].id; else currentChapterId.value = null; } saveToLocal(); } } }
+            function markStatus(s) { if(selectedNode.value) { selectedNode.value.status = s; saveToLocal(); } }
+            function previewImage(url) { previewImageUrl.value = url; }
+
+            function handleImageUpload(e) {
+                const files = e.target.files; if(!files?.length) return;
+                if(!selectedNode.value) { alert('请先选中节点'); return; }
+                if(!selectedNode.value.images) selectedNode.value.images=[];
+                if(selectedNode.value.images.length>=10) { alert('最多10张图片'); e.target.value=''; return; }
+                Array.from(files).forEach(file=>{
+                    if(!file.type.startsWith('image/')) return;
+                    if(file.size>10*1024*1024) { alert('图片超过10MB'); return; }
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                        const img = new Image();
+                        img.onload = () => {
+                            let { width, height } = img;
+                            const maxW=1600; if(width>maxW) { height=Math.round(height*maxW/width); width=maxW; }
+                            const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
+                            const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,width,height);
+                            const outputFormat = file.type==='image/png' ? 'image/png' : 'image/jpeg';
+                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.92;
+                            selectedNode.value.images.push({ id:'img_'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:canvas.toDataURL(outputFormat, outputQuality), name:file.name });
+                            saveToLocal();
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+                e.target.value='';
+            }
+            function removeImage(idx) { if(selectedNode.value?.images) { selectedNode.value.images.splice(idx,1); saveToLocal(); } }
+            function saveToLocal() { try { localStorage.setItem('kaoyan_infinite_v3', JSON.stringify(subjects.value)); } catch(e) {} }
+
+            // 云同步方法
+            function openTokenDialog() { tempToken.value = githubToken.value; tempGistId.value = gistId.value; showTokenDialog.value = true; }
+            async function fetchMyGists() {
+                if (!tempToken.value.trim()) { alert('请先输入 Token'); return; }
+                const resp = await fetch('https://api.github.com/gists', { headers: { Authorization: `token ${tempToken.value.trim()}` } });
+                if (resp.ok) {
+                    const gists = await resp.json();
+                    const list = gists.map(g => `描述：${g.description}\nID：${g.id}`).join('\n\n');
+                    alert('你的 Gist 列表：\n\n' + list);
+                } else alert('获取失败，检查 Token');
+            }
+            async function saveTokenConfig() {
+                if (!tempToken.value.trim()) { alert('Token 不能为空'); return; }
+                githubToken.value = tempToken.value.trim();
+                localStorage.setItem('github_token', githubToken.value);
+                if (tempGistId.value.trim()) {
+                    gistId.value = tempGistId.value.trim();
+                    localStorage.setItem('gist_id', gistId.value);
+                    showTokenDialog.value = false;
+                    alert('配置已保存！');
+                    return;
+                }
+                const resp = await fetch('https://api.github.com/gists', { headers: { Authorization: `token ${githubToken.value}` } });
+                if (resp.ok) {
+                    const gists = await resp.json();
+                    const existing = gists.find(g => g.description === '考研思维导图数据');
+                    if (existing) {
+                        gistId.value = existing.id;
+                        localStorage.setItem('gist_id', gistId.value);
+                        showTokenDialog.value = false;
+                        alert('已自动绑定已有的 Gist！');
+                        return;
                     }
-                } catch (e) {
-                    alert("解析失败，请输入有效的 JSON 数据。");
                 }
+                const createResp = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: '考研思维导图数据', public: false, files: { 'kaoyan_data.json': { content: JSON.stringify(subjects.value) } } })
+                });
+                if (createResp.ok) {
+                    const data = await createResp.json();
+                    gistId.value = data.id;
+                    localStorage.setItem('gist_id', gistId.value);
+                    showTokenDialog.value = false;
+                    alert('Gist 创建成功！');
+                } else alert('创建失败，检查 Token 权限');
             }
-        }
-	// 1. 添加科目功能
-function addSubject() {
-    const name = prompt("请输入全新科目名称：");
-    if (name) {
-        const sid = 'sub_' + Date.now();
-        subjects.value.push({ id: sid, name: name, chapters: [] });
-        switchSubject(sid);
-        saveToLocal();
-    }
-}
-
-// 2. 传送门瞬间横跳穿梭机制
-function handlePortalJump(portalStr) {
-    const [subId, chapId, nodeId] = portalStr.split('|');
-    currentSubjectId.value = subId;
-    currentChapterId.value = chapId;
-    
-    setTimeout(() => {
-        // 递归查找目标节点并高亮选中
-        const findNode = (root, id) => {
-            if (root.id === id) return root;
-            if (root.children) {
-                for (let c of root.children) {
-                    const res = findNode(c, id);
-                    if (res) return res;
+            async function backupToGist() {
+                if (!githubToken.value || !gistId.value) { alert('请先配置'); return; }
+                const resp = await fetch(`https://api.github.com/gists/${gistId.value}`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { 'kaoyan_data.json': { content: JSON.stringify(subjects.value) } } })
+                });
+                if (resp.ok) alert('✅ 备份成功！'); else alert('备份失败');
+            }
+            async function restoreFromGist() {
+                if (!githubToken.value || !gistId.value) { alert('请先配置'); return; }
+                const resp = await fetch(`https://api.github.com/gists/${gistId.value}`, { headers: { Authorization: `token ${githubToken.value}` } });
+                if (!resp.ok) { alert('获取失败'); return; }
+                const data = await resp.json();
+                const content = data.files['kaoyan_data.json']?.content;
+                if (!content) { alert('云端无数据'); return; }
+                if (!confirm('云端数据将覆盖本地，确定恢复吗？')) return;
+                subjects.value = JSON.parse(content);
+                saveToLocal();
+                selectedNode.value = null;
+                multiSelectMode.value = false;
+                selectedNodeIds.value = new Set();
+                await nextTick();
+                if (subjects.value.length > 0) {
+                    currentSubjectId.value = subjects.value[0].id;
+                    if (subjects.value[0].chapters.length > 0) currentChapterId.value = subjects.value[0].chapters[0].id;
                 }
+                alert('✅ 恢复成功！');
             }
-            return null;
-        };
-        const target = findNode(currentChapter.value.tree, nodeId);
-        if (target) {
-            selectedNode.value = target;
-            alert(`✨ 穿梭成功！已带你降落到关联考点：【${target.label}】`);
-        }
-    }, 50);
-}
+            function copyGistId() { if (gistId.value) { navigator.clipboard.writeText(gistId.value); alert('Gist ID 已复制'); } }
 
-// 3. 辅助函数：将树拉平，用于生成下拉菜单选择
-function flattenTree(root) {
-    let result = [];
-    if (!root) return result;
-    function traverse(node) {
-        result.push({ id: node.id, label: node.label });
-        if (node.children) node.children.forEach(traverse);
-    }
-    traverse(root);
-    return result;
-}
-        return {
-            subjects,
-            currentSubjectId,
-            currentSubject,
-            activeNodeId,
-            activeNode,
-            switchSubject,
-            selectNode,
-            addRootNode,
-            addChildNode,
-            deleteNode,
-            exportData,
-            importData,
-	addSubject,
-handlePortalJump,
-flattenTree,
-            saveToLocalStorage
-        };
-    }
-}).mount('#app');
+            return {
+                subjects, currentSubjectId, currentChapterId, selectedNode, mobileSidebarOpen, multiSelectMode, selectedNodeIds, previewImageUrl,
+                currentSubject, currentChapter, allChaptersFlat,
+                switchSubject, switchChapter, deselectNode, toggleMobileSidebar, closeMobileSidebar, toggleMultiSelectMode, deleteSelectedNodes,
+                addFirstLevelNode, addChildNode, deleteNode, addSubject, addChapter, editSubjectName, deleteSubject, editChapterName, deleteChapter,
+                markStatus, previewImage, handleImageUpload, removeImage, saveToLocal,
+                gistId, githubToken, showTokenDialog, tempToken, tempGistId,
+                openTokenDialog, fetchMyGists, saveTokenConfig, backupToGist, restoreFromGist, copyGistId
+            };
+        }
+    });
+
+    app.component('tree-node', TreeNode);
+    app.mount('#app');
 </script>
 </body>
 </html>
