@@ -119,6 +119,16 @@
             <div class="absolute bottom-3 md:bottom-5 left-3 md:left-5 z-80 flex gap-2 bg-white/95 backdrop-blur p-1.5 md:p-2 rounded-xl shadow-lg border">
                 <button @click="addChildNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'" class="px-3 py-2 text-xs rounded-lg">📥 衍生</button>
                 <button @click="deleteNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-300'" class="px-3 py-2 text-xs rounded-lg">✕ 删除</button>
+		<button @click="addSiblingBefore" :disabled="!selectedNode || multiSelectMode || selectedNode.id.startsWith('root_')"
+        :class="(selectedNode && !multiSelectMode && !selectedNode.id.startsWith('root_')) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
+        class="px-3 py-2 md:py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1 active:scale-95">
+    ⬆️ <span class="hidden md:inline">上方同级</span>
+</button>
+<button @click="addSiblingAfter" :disabled="!selectedNode || multiSelectMode || selectedNode.id.startsWith('root_')"
+        :class="(selectedNode && !multiSelectMode && !selectedNode.id.startsWith('root_')) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
+        class="px-3 py-2 md:py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1 active:scale-95">
+    ⬇️ <span class="hidden md:inline">下方同级</span>
+</button>
                 <button v-if="multiSelectMode && selectedNodeIds.size > 0" @click="deleteSelectedNodes" class="px-3 py-2 text-xs bg-rose-600 text-white rounded-lg">🗑️ 删除选中 ({{ selectedNodeIds.size }})</button>
                 <button @click="deselectNode" class="px-3 py-2 text-xs bg-slate-200 rounded-lg">↩</button>
             </div>
@@ -344,14 +354,13 @@
                 const [subId, chapId, nodeId] = portalStr.split('|');
                 currentSubjectId.value = subId;
                 currentChapterId.value = chapId;
-selectedNode.value = null;      // 关闭编辑面板
-    closeMobileSidebar();
-                nextTick(() => {
-                    const target = findNodeById(currentChapter.value?.tree, nodeId);
-                    if (target) selectedNode.value = target;
-                });
-            });
-            provide('getNodeStyle', (node) => {
+setTimeout(() => {
+        if (currentChapter.value) {
+            const target = findNodeById(currentChapter.value.tree, nodeId);
+            if (target) selectedNode.value = target;
+        }
+    }, 60);
+});            provide('getNodeStyle', (node) => {
                 if (!node) return {};
                 if (node.status === 'red') return { backgroundColor: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' };
                 if (node.status === 'yellow') return { backgroundColor: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' };
@@ -410,7 +419,59 @@ selectedNode.value = null;      // 关闭编辑面板
             function addFirstLevelNode() { if(!currentChapter.value) return; const root = currentChapter.value.tree; const label = prompt("一级考点名称："); if(label?.trim()) { if(!root.children) root.children=[]; root.children.push({ id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] }); selectedNode.value = root.children[root.children.length-1]; saveToLocal(); } }
             function addChildNode() { if(!selectedNode.value) return; const label = prompt("下级考点名称："); if(label?.trim()) { if(!selectedNode.value.children) selectedNode.value.children=[]; const n = { id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] }; selectedNode.value.children.push(n); selectedNode.value = n; saveToLocal(); } }
             function deleteNode() { if(!selectedNode.value || selectedNode.value.id.startsWith('root_')) return; if(confirm('删除「'+selectedNode.value.label+'」？')) { if(!currentChapter.value) return; if(removeRecursive(currentChapter.value.tree, selectedNode.value.id)) { selectedNode.value=null; saveToLocal(); } } }
+		function addSiblingBefore() {
+    if (!selectedNode.value || selectedNode.value.id.startsWith('root_')) return;
+    if (!currentChapter.value) return;
+    const parentInfo = findParentNode(currentChapter.value.tree, selectedNode.value.id);
+    if (!parentInfo) return;
+    const label = prompt('请输入同级考点名称：');
+    if (label && label.trim()) {
+        const newNode = {
+            id: 'n_' + Date.now() + Math.random().toString(36).slice(2, 8),
+            label: label.trim(),
+            status: 'clear',
+            note: '',
+            images: [],
+            children: []
+        };
+        parentInfo.parent.children.splice(parentInfo.index, 0, newNode);
+        selectedNode.value = newNode;
+        saveToLocal();
+    }
+}
+
+function addSiblingAfter() {
+    if (!selectedNode.value || selectedNode.value.id.startsWith('root_')) return;
+    if (!currentChapter.value) return;
+    const parentInfo = findParentNode(currentChapter.value.tree, selectedNode.value.id);
+    if (!parentInfo) return;
+    const label = prompt('请输入同级考点名称：');
+    if (label && label.trim()) {
+        const newNode = {
+            id: 'n_' + Date.now() + Math.random().toString(36).slice(2, 8),
+            label: label.trim(),
+            status: 'clear',
+            note: '',
+            images: [],
+            children: []
+        };
+        parentInfo.parent.children.splice(parentInfo.index + 1, 0, newNode);
+        selectedNode.value = newNode;
+        saveToLocal();
+    }
+}
             function removeRecursive(parent, targetId) { if(!parent?.children) return false; const idx = parent.children.findIndex(c=>c.id===targetId); if(idx!==-1) { parent.children.splice(idx,1); return true; } return parent.children.some(c=>removeRecursive(c,targetId)); }
+		function findParentNode(root, targetId) {
+    if (!root || !root.children) return null;
+    for (let i = 0; i < root.children.length; i++) {
+        if (root.children[i].id === targetId) {
+            return { parent: root, index: i };
+        }
+        const found = findParentNode(root.children[i], targetId);
+        if (found) return found;
+    }
+    return null;
+}
             function findNodeById(root, id) { if(!root) return null; if(root.id===id) return root; if(root.children) for(let c of root.children) { const r=findNodeById(c,id); if(r) return r; } return null; }
             function addSubject() { const name = prompt('科目名称：'); if(name?.trim()) { const id='sub_'+Date.now(); subjects.value.push({id, name:name.trim(), chapters:[]}); switchSubject(id); saveToLocal(); } }
             function addChapter() { if(!currentSubject.value) return; const name = prompt('章节名称：'); if(name?.trim()) { const cid='c_'+Date.now(); const trimmed=name.trim(); currentSubject.value.chapters.push({ id:cid, name:trimmed, tree:{ id:'root_'+Date.now(), label:trimmed, status:'clear', note:'', images:[], children:[] } }); currentChapterId.value=cid; selectedNode.value=null; saveToLocal(); } }
@@ -536,7 +597,8 @@ selectedNode.value = null;      // 关闭编辑面板
                 addFirstLevelNode, addChildNode, deleteNode, addSubject, addChapter, editSubjectName, deleteSubject, editChapterName, deleteChapter,
                 markStatus, previewImage, handleImageUpload, removeImage, saveToLocal,
                 gistId, githubToken, showTokenDialog, tempToken, tempGistId,
-                openTokenDialog, fetchMyGists, saveTokenConfig, backupToGist, restoreFromGist, copyGistId
+                openTokenDialog, fetchMyGists, saveTokenConfig, backupToGist, restoreFromGist, copyGistId,addSiblingBefore,
+addSiblingAfter,
             };
         }
     });
