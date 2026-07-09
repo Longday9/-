@@ -334,7 +334,7 @@
             const multiSelectMode = inject('multiSelectMode');
             const selectedNodeIds = inject('selectedNodeIds');
             const toggleNodeMultiSelect = inject('toggleNodeMultiSelect');
-
+const canvasDragged = inject('canvasDragged');
             const isSelected = computed(() => selectedNodeId.value === props.node.id);
             const isMultiSelected = computed(() => multiSelectMode.value && selectedNodeIds.value.has(props.node.id));
             const hasContent = computed(() => props.node.note || (props.node.images && props.node.images.length > 0));
@@ -346,6 +346,9 @@
             });
 
             function onClickNode() {
+if (canvasDragged && canvasDragged.value) {
+                return; 
+            }
                 if (multiSelectMode.value) toggleNodeMultiSelect(props.node);
                 else selectNode(props.node);
             }
@@ -419,7 +422,8 @@
             const showTokenDialog = ref(false);
             const tempToken = ref('');
             const tempGistId = ref('');
-
+const canvasDragged = ref(false);
+provide('canvasDragged', canvasDragged);
             const currentSubject = computed(() => subjects.value.find(s => s.id === currentSubjectId.value));
             const currentChapter = computed(() => currentSubject.value?.chapters.find(c => c.id === currentChapterId.value) || null);
             
@@ -572,90 +576,109 @@
             }
 
             function startCanvasDrag(e) {
-                const target = e.target;
-                if (target.closest('.tree-node')) return;  
-                isDragging.value = true;
-                dragStartX = e.clientX;
-                dragStartY = e.clientY;
-                lastTranslateX = canvasTranslateX.value;
-                lastTranslateY = canvasTranslateY.value;
-                e.preventDefault();
-            }
+    const target = e.target;
+    isDragging.value = true;
+    canvasDragged.value = false; // 重置
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    lastTranslateX = canvasTranslateX.value;
+    lastTranslateY = canvasTranslateY.value;
+    if (!target.closest('.tree-node')) {
+        e.preventDefault();
+    }
+}
 
             function onCanvasDrag(e) {
-                if (!isDragging.value) return;
-                const dx = e.clientX - dragStartX;
-                const dy = e.clientY - dragStartY;
-                canvasTranslateX.value = lastTranslateX + dx;
-                canvasTranslateY.value = lastTranslateY + dy;
-            }
+    if (!isDragging.value) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        canvasDragged.value = true;
+    }
+    canvasTranslateX.value = lastTranslateX + dx;
+    canvasTranslateY.value = lastTranslateY + dy;
+}
 
-            function stopCanvasDrag() { isDragging.value = false; }
-
+function stopCanvasDrag() { 
+    isDragging.value = false; 
+    // ⏳ 延迟 100 毫秒再清空拖拽标记，确保浏览器的 click 事件在这期间完成拦截消费
+    setTimeout(() => {
+        canvasDragged.value = false;
+    }, 100);
+}
             // 📱 移动端捏合控制状态变量
             let touchStartDistance = 0;
             let lastScale = 1;
             let touchStartMidX = 0, touchStartMidY = 0;
 
-            function startCanvasDragTouch(e) {
-                const target = e.target;
-                if (target.closest('.tree-node')) return;
-                
-                if (e.touches.length === 1) {
-                    e.preventDefault();
-                    isDragging.value = true;
-                    dragStartX = e.touches[0].clientX;
-                    dragStartY = e.touches[0].clientY;
-                    lastTranslateX = canvasTranslateX.value;
-                    lastTranslateY = canvasTranslateY.value;
-                } else if (e.touches.length === 2) {
-                    e.preventDefault();
-                    isDragging.value = false;
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    touchStartDistance = Math.sqrt(dx * dx + dy * dy);
-                    lastScale = canvasScale.value;
-                    touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                    touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                    lastTranslateX = canvasTranslateX.value;
-                    lastTranslateY = canvasTranslateY.value;
-                }
-            }
-
+function startCanvasDragTouch(e) {
+    const target = e.target;
+    // 删除了原有的节点 return 拦截，允许在节点上开始拖拽触发
+    
+    if (e.touches.length === 1) {
+        // 如果触点在节点上，千万不要 preventDefault，否则节点将无法产生后续的普通 click
+        if (!target.closest('.tree-node')) {
+            e.preventDefault();
+        }
+        isDragging.value = true;
+        canvasDragged.value = false; // 每次触控开始，重置拖拽标记
+        dragStartX = e.touches[0].clientX;
+        dragStartY = e.touches[0].clientY;
+        lastTranslateX = canvasTranslateX.value;
+        lastTranslateY = canvasTranslateY.value;
+    } else if (e.touches.length === 2) {
+        e.preventDefault();
+        isDragging.value = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+        lastScale = canvasScale.value;
+        
+        touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        lastTranslateX = canvasTranslateX.value;
+        lastTranslateY = canvasTranslateY.value;
+    }
+}
             // 📱 移动端：双指缩放时精准锚定中间区域
-            function onCanvasDragTouch(e) {
-                const target = e.target;
-                if (target.closest('.tree-node')) { isDragging.value = false; return; }
-                
-                if (e.touches.length === 1 && isDragging.value) {
-                    e.preventDefault();
-                    const dx = e.touches[0].clientX - dragStartX;
-                    const dy = e.touches[0].clientY - dragStartY;
-                    canvasTranslateX.value = lastTranslateX + dx;
-                    canvasTranslateY.value = lastTranslateY + dy;
-                } else if (e.touches.length === 2) {
-                    e.preventDefault();
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (touchStartDistance > 0) {
-                        const scaleChange = distance / touchStartDistance;
-                        const newScale = Math.min(Math.max(lastScale * scaleChange, 0.2), 5);
-                        const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                        const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const midX = currentMidX - rect.left;
-                        const midY = currentMidY - rect.top;
-                        const startMidXRel = touchStartMidX - rect.left;
-                        const startMidYRel = touchStartMidY - rect.top;
-                        canvasTranslateX.value = midX - (startMidXRel - lastTranslateX) * (newScale / lastScale);
-                        canvasTranslateY.value = midY - (startMidYRel - lastTranslateY) * (newScale / lastScale);
-                        canvasScale.value = newScale;
-                    }
-                }
-            }
-
+function onCanvasDragTouch(e) {
+    // 删除了原有的节点 return 拦截
+    
+    if (e.touches.length === 1 && isDragging.value) {
+        const dx = e.touches[0].clientX - dragStartX;
+        const dy = e.touches[0].clientY - dragStartY;
+        
+        // 🔍 如果滑动位移大于 5 像素，说明用户是在移动视角，将其锁死，防止触发点击编辑
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            canvasDragged.value = true;
+        }
+        
+        canvasTranslateX.value = lastTranslateX + dx;
+        canvasTranslateY.value = lastTranslateY + dy;
+    } else if (e.touches.length === 2) {
+        // 双指缩放逻辑保持原状不变
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (touchStartDistance > 0) {
+            const scaleChange = distance / touchStartDistance;
+            const newScale = Math.min(Math.max(lastScale * scaleChange, 0.2), 5);
+            const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const midX = currentMidX - rect.left;
+            const midY = currentMidY - rect.top;
+            const startMidXRel = touchStartMidX - rect.left;
+            const startMidYRel = touchStartMidY - rect.top;
+            
+            canvasTranslateX.value = midX - (startMidXRel - lastTranslateX) * (newScale / lastScale);
+            canvasTranslateY.value = midY - (startMidYRel - lastTranslateY) * (newScale / lastScale);
+            canvasScale.value = newScale;
+        }
+    }
+}
             function addRootNode() {
                 if (!currentChapter.value) return;
                 const label = prompt("根考点名称：");
