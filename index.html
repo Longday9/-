@@ -149,7 +149,7 @@
                      transform: `translate(${canvasTranslateX}px, ${canvasTranslateY}px) scale(${canvasScale})`,
                      transformOrigin: '0 0'
                  }">
-                <div class="absolute inset-0 p-4 md:p-8 overflow-auto flex flex-col items-start justify-start gap-10 md:gap-14 no-scrollbar" style="padding-bottom: 120px;">
+                <div class="w-max h-max min-w-full min-h-full p-4 md:p-8 flex flex-col items-start justify-start gap-10 md:gap-14" style="padding-bottom: 400px; padding-right: 400px;">
                     <div v-if="!currentChapter" class="text-slate-400 text-sm flex flex-col items-center gap-3 w-full text-center py-20"><span class="text-5xl">📖</span><p>请选择章节</p></div>
                     <template v-if="currentChapter">
                         <tree-node v-for="root in currentChapter.treeRoots" :key="root.id" :node="root" :depth="0" @add-first-level="addFirstLevelNode(root)" />
