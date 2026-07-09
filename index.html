@@ -27,12 +27,10 @@
             padding: 8px 14px;
             white-space: nowrap;
         }
-        .tree-node:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.15); z-index: 45; }
-        .tree-node.root-node {
-            font-weight: 700;
-            box-shadow: 0 4px 14px rgba(79,70,229,0.3);
-        }
-        .tree-node.root-node:hover { transform: translateY(-3px) scale(1.04); }
+       @media (hover: hover) {
+    .tree-node:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.15); z-index: 45; }
+    .tree-node.root-node:hover { transform: translateY(-3px) scale(1.04); }
+}
         .node-selected { animation: selectedGlow 2.2s infinite; z-index: 50; }
         @keyframes selectedGlow { 0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.35); } 50% { box-shadow: 0 0 0 16px rgba(99,102,241,0.05); } }
         .node-multi-selected { box-shadow: 0 0 0 4px rgba(245,158,11,0.6) !important; border-color: #f59e0b !important; }
@@ -190,7 +188,7 @@
             <div class="p-4 flex-1 overflow-y-auto no-scrollbar space-y-3" style="padding-bottom: 140px;">
                 
                 <div class="grid grid-cols-3 gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200/80 mb-1 shrink-0">
-                    <button @click="addRootNode" :disabled="!currentChapter" :class="currentChapter ? 'bg-emerald-600 text-white active:scale-95' : 'bg-slate-100 text-slate-300'" class="py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">🌱 新增根</button>
+                    <button @click="addRootNode" :disabled="!currentChapter" :class="currentChapter ? 'bg-emerald-600 text-white active:scale-95' : 'bg-slate-100 text-slate-300'" class="py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">🌱 新增根节点</button>
                     <button @click="addChildNode" class="bg-indigo-600 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">📥 衍生下级</button>
                     <button @click="deleteNode" class="bg-rose-500 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">✕ 删除节点</button>
                     <button @click="addSiblingBefore" class="bg-teal-600 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">⬆️ 上方同级</button>
@@ -371,7 +369,6 @@ if (canvasDragged && canvasDragged.value) {
                         <div v-if="hasContent" class="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-0.5"></div>
                         <span v-if="isMultiSelected" class="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-500 text-white rounded-full text-[10px] font-bold">✓</span>
                     </div>
-                    <button v-if="depth === 0" @click.stop="emit('add-first-level')" class="absolute -bottom-2 -right-2 w-7 h-7 bg-indigo-600 text-white rounded-full text-lg font-bold shadow-lg">+</button>
                 </div>
                 <template v-if="node.children && node.children.length > 0">
                     <div class="flex flex-col gap-1.5 pl-3 md:pl-5 py-0.5 shrink-0" :style="{ borderLeft: depth >= 0 ? '2px solid #cbd5e1' : 'none' }">
@@ -593,7 +590,7 @@ provide('canvasDragged', canvasDragged);
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
     
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
         canvasDragged.value = true;
     }
     canvasTranslateX.value = lastTranslateX + dx;
