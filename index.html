@@ -54,7 +54,6 @@
 <body class="bg-slate-100 text-slate-800 antialiased overflow-hidden h-screen w-screen">
 <div id="app" class="flex h-full w-full relative" v-cloak>
     
-    <!-- 移动端顶部标题栏 -->
     <header class="md:hidden fixed top-0 left-0 right-0 h-12 bg-white border-b border-slate-200 z-50 flex items-center px-3 gap-2 shadow-sm">
         <button @click="toggleMobileSidebar" class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-700">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -68,7 +67,6 @@
     </header>
     <div v-if="mobileSidebarOpen" class="sidebar-overlay fixed inset-0 bg-black/50 z-[55] md:hidden" @click="toggleMobileSidebar"></div>
 
-    <!-- 左侧控制面板 -->
     <aside :class="['bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-[56] shrink-0', 'md:relative md:translate-x-0 md:w-64', 'fixed inset-y-0 left-0 w-72 sidebar-drawer', mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full']">
         <div class="p-4 border-b border-slate-800 bg-slate-950 shrink-0"><h1 class="text-base font-bold text-white">🎯 考研图文分离画布</h1></div>
         <div class="p-3 border-b border-slate-800 shrink-0">
@@ -102,7 +100,6 @@
             </div>
         </div>
         
-        <!-- 云同步底层控制 -->
         <div class="p-2 border-t border-slate-800 bg-slate-950 text-[9px] space-y-1 shrink-0">
             <div class="flex items-center justify-between">
                 <span class="text-slate-400 font-semibold">☁️ Repo 同步</span>
@@ -116,7 +113,6 @@
         </div>
     </aside>
 
-    <!-- 主画布区域 -->
     <main class="flex-1 flex flex-col relative overflow-hidden z-10 min-w-0 pt-12 md:pt-0">
         <div class="hidden md:flex h-[52px] bg-white border-b border-slate-200 px-5 items-center justify-between shadow-sm z-30 shrink-0">
             <div class="flex items-center gap-2"><span class="text-sm font-bold">{{ currentSubject?.name || '未选择' }}</span><span class="text-slate-300">/</span><span class="text-sm text-slate-600">{{ currentChapter?.name || '未选择章节' }}</span></div>
@@ -153,7 +149,6 @@
             </div>
         </div>
 
-        <!-- 底栏全局操作 -->
         <div class="absolute bottom-3 md:bottom-5 left-3 md:left-5 z-50 flex gap-2 bg-white/95 backdrop-blur p-1.5 md:p-2 rounded-xl shadow-lg border flex-wrap max-w-[calc(100vw-2rem)]">
             <button @click="addRootNode" :disabled="!currentChapter" :class="currentChapter ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'" class="px-3 py-2 text-xs rounded-lg font-medium transition-all active:scale-95">🌱 新增根节点</button>
             <button @click="addChildNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'" class="hidden md:inline-block px-3 py-2 text-xs rounded-lg">📥 衍生</button>
@@ -165,10 +160,8 @@
         </div>
     </main>
 
-    <!-- 移动端抽屉遮罩 -->
     <div :class="['md:hidden fixed inset-0 z-[60] bg-black/50 transition-opacity', selectedNode && !multiSelectMode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none']" @click="deselectNode"></div>
     
-    <!-- 移动端底栏编辑页面板 -->
     <div :class="['md:hidden fixed bottom-0 left-0 right-0 z-[70] bottom-sheet bg-white overflow-hidden flex flex-col transition-transform', selectedNode && !multiSelectMode ? 'translate-y-0' : 'translate-y-full']" style="max-height: 75vh;">
         <div v-if="selectedNode && !multiSelectMode" class="flex flex-col h-full" style="max-height: 75vh;">
             <div class="flex justify-center pt-2 pb-1 shrink-0"><div class="w-10 h-1 bg-slate-300 rounded-full"></div></div>
@@ -207,7 +200,6 @@
                 </div>
                 <textarea v-model="selectedNode.note" @input="saveToLocal" placeholder="背诵内容 / 核心公式..." class="w-full h-28 p-3 border rounded-lg text-xs resize-none"></textarea>
                 
-                <!-- 移动端图片笔记 -->
                 <div class="border border-dashed border-slate-300 rounded-md p-2 bg-white space-y-2">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-bold text-slate-400">📷 图片笔记 (Repo网络加速版)</span>
@@ -217,7 +209,6 @@
                         </label>
                     </div>
                     <div v-if="selectedNode.images && selectedNode.images.length > 0" class="grid grid-cols-2 gap-2 mt-1">
-                        <!-- 【更新点】：此处使用了 :src="optimizeImageUrl(img.dataUrl)" -->
                         <div v-for="(img, idx) in selectedNode.images" :key="img.id" class="relative group aspect-square rounded overflow-hidden image-thumb" @click.stop="previewImage(img.dataUrl)">
                             <img :src="optimizeImageUrl(img.dataUrl)" class="w-full h-full object-cover">
                             <button @click.stop="removeImage(idx)" class="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow">✕</button>
@@ -229,7 +220,6 @@
         </div>
     </div>
 
-    <!-- 移动端快捷掌握度打卡 -->
     <div v-if="selectedNode && !multiSelectMode" class="md:hidden absolute bottom-3 right-3 z-[80] flex gap-1 bg-white/95 backdrop-blur p-1.5 rounded-xl shadow-lg border">
         <button @click="markStatus('red')" class="w-8 h-8 flex items-center justify-center bg-rose-500 text-white rounded-lg text-sm">🔴</button>
         <button @click="markStatus('yellow')" class="w-8 h-8 flex items-center justify-center bg-amber-400 text-slate-900 rounded-lg text-sm">🟡</button>
@@ -238,7 +228,6 @@
         <button @click="markStatus('clear')" class="w-8 h-8 flex items-center justify-center bg-slate-200 text-slate-500 rounded-lg text-xs">↺</button>
     </div>
 
-    <!-- 电脑端侧边编辑面板 -->
     <div :class="['hidden md:flex w-80 bg-white border-l shadow-2xl flex-col absolute right-0 top-[52px] bottom-0 z-40 side-panel-desktop', selectedNode && !multiSelectMode ? 'translate-x-0' : 'translate-x-full']">
         <div v-if="selectedNode && !multiSelectMode" class="flex flex-col h-full overflow-hidden">
             <div class="p-4 border-b bg-slate-50 flex justify-between items-center"><span class="text-xs font-bold">✍️ {{ selectedNode.label }}</span><button @click="deselectNode" class="text-slate-400">✕</button></div>
@@ -264,7 +253,6 @@
                 <div class="border border-dashed p-2 rounded-md">
                     <div class="flex justify-between"><span class="text-[11px] font-bold">📷 图片笔记</span><label class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 rounded-md"><span>＋ 上传图片</span><input type="file" accept="image/*" multiple class="hidden" @change="handleImageUpload"></label></div>
                     <div v-if="selectedNode.images && selectedNode.images.length > 0" class="grid grid-cols-2 gap-2 mt-1">
-                        <!-- 【更新点】：此处使用了 :src="optimizeImageUrl(img.dataUrl)" -->
                         <div v-for="(img, idx) in selectedNode.images" :key="img.id" class="relative group aspect-square rounded overflow-hidden" @click.stop="previewImage(img.dataUrl)">
                             <img :src="optimizeImageUrl(img.dataUrl)" class="w-full h-full object-cover">
                             <button @click.stop="removeImage(idx)" class="absolute top-0.5 right-0.5 bg-rose-500 text-white rounded-full w-4 h-4 text-[10px] opacity-0 group-hover:opacity-100">✕</button>
@@ -275,7 +263,6 @@
         </div>
     </div>
 
-    <!-- 🔑 配置弹窗 -->
     <div v-if="showTokenDialog" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" @click.self="showTokenDialog = false">
         <div class="bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-600 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="text-white font-bold mb-3 text-sm flex items-center justify-between">
@@ -315,7 +302,6 @@
         </div>
     </div>
 
-    <!-- 全屏图片查看 -->
     <div v-if="previewImageUrl" class="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" @click="previewImageUrl = null">
         <img :src="previewImageUrl" class="max-w-full max-h-full object-contain rounded-lg" @click.stop />
     </div>
@@ -482,10 +468,10 @@
                 }
             });
 
-            // ⭐【新增核心逻辑】：解决 raw.githubusercontent.com 国内网络无法加载的 CDN 加速清洗器
+            // ⭐【优化点】：切换为高可用 gcore 节点，提供在国内更快的加速访问体验
             function optimizeImageUrl(url) {
                 if (!url) return '';
-                if (url.startsWith('data:image')) return url; // Base64 依然保留本地临时预览
+                if (url.startsWith('data:image')) return url;
                 if (url.includes('raw.githubusercontent.com')) {
                     try {
                         let clean = url.replace('https://raw.githubusercontent.com/', '');
@@ -495,12 +481,9 @@
                             let repo = parts[1];
                             let branch = parts[2];
                             let rest = parts.slice(3).join('/');
-                            // 动态清洗重构为国内高可用边缘节点，免代理直接加载
-                            return `https://fastly.jsdelivr.net/gh/${user}/${repo}@${branch}/${rest}`;
+                            return `https://gcore.jsdelivr.net/gh/${user}/${repo}@${branch}/${rest}`;
                         }
-                    } catch(e) {
-                        return url;
-                    }
+                    } catch(e) { return url; }
                 }
                 return url;
             }
@@ -766,10 +749,9 @@
 
             function deleteChapter(chap) { if (!currentSubject.value) return; if (confirm(`删除章节「${chap.name}」？`)) { const idx = currentSubject.value.chapters.findIndex(c => c.id === chap.id); if (idx !== -1) { currentSubject.value.chapters.splice(idx, 1); if (currentChapterId.value === chap.id) { if (currentSubject.value.chapters.length) currentChapterId.value = currentSubject.value.chapters[0].id; else currentChapterId.value = null; } saveToLocal(); } } }
             function markStatus(s) { if(selectedNode.value) { selectedNode.value.status = s; saveToLocal(); } }
-            
-            // 【更新点】：放大预览时也需要提取加速后的外部网络链接
             function previewImage(url) { previewImageUrl.value = optimizeImageUrl(url); }
 
+            // ⭐【优化点】：加强前端压缩效率，最大宽度限死1000px，JPEG压缩率降为0.7，显著削减传输开销
             function handleImageUpload(e) {
                 const files = e.target.files; if(!files?.length) return;
                 if(!selectedNode.value) { alert('请先选中节点'); return; }
@@ -784,12 +766,12 @@
                         const img = new Image();
                         img.onload = () => {
                             let { width, height } = img;
-                            const maxW=1600; if(width>maxW) { height=Math.round(height*maxW/width); width=maxW; }
+                            const maxW=1000; if(width>maxW) { height=Math.round(height*maxW/width); width=maxW; }
                             const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
                             const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,width,height);
                             
                             const outputFormat = file.type==='image/png' ? 'image/png' : 'image/jpeg';
-                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.85;
+                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.70; // 调整为更轻量级的 0.70
                             const base64Data = canvas.toDataURL(outputFormat, outputQuality);
                             
                             const imgId = 'img_' + Date.now() + Math.random().toString(36).slice(2, 6);
@@ -1005,7 +987,7 @@
                 openTokenDialog, fetchMyGists, saveTokenConfig, backupToRepo, restoreFromRepo, copyRepoName, addSiblingBefore,
                 addSiblingAfter, onChapterDragStart, canvasScale, canvasTranslateX, canvasTranslateY,
                 handleCanvasZoom, startCanvasDrag, onCanvasDrag, stopCanvasDrag, startCanvasDragTouch, onCanvasDragTouch, onChapterDrop, addRootNode,
-                optimizeImageUrl // ⭐ 导出到模板层使用
+                optimizeImageUrl
             };
         }
     });
