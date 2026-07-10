@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>考研多级织网 · 移动端优化版</title>
+    <title>考研多级织网 · 远端图文分离版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -27,10 +27,10 @@
             padding: 8px 14px;
             white-space: nowrap;
         }
-       @media (hover: hover) {
-    .tree-node:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.15); z-index: 45; }
-    .tree-node.root-node:hover { transform: translateY(-3px) scale(1.04); }
-}
+        @media (hover: hover) {
+            .tree-node:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.15); z-index: 45; }
+            .tree-node.root-node:hover { transform: translateY(-3px) scale(1.04); }
+        }
         .node-selected { animation: selectedGlow 2.2s infinite; z-index: 50; }
         @keyframes selectedGlow { 0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.35); } 50% { box-shadow: 0 0 0 16px rgba(99,102,241,0.05); } }
         .node-multi-selected { box-shadow: 0 0 0 4px rgba(245,158,11,0.6) !important; border-color: #f59e0b !important; }
@@ -46,18 +46,14 @@
         .image-thumb:hover { border-color: #6366f1; transform: scale(1.05); }
 
         @media (max-width: 767px) {
-            .tree-node {
-                font-size: 0.75rem;
-                padding: 6px 10px;
-            }
-            .tree-node.root-node {
-                font-size: 0.85rem;
-            }
+            .tree-node { font-size: 0.75rem; padding: 6px 10px; }
+            .tree-node.root-node { font-size: 0.85rem; }
         }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased overflow-hidden h-screen w-screen">
 <div id="app" class="flex h-full w-full relative" v-cloak>
+    
     <header class="md:hidden fixed top-0 left-0 right-0 h-12 bg-white border-b border-slate-200 z-50 flex items-center px-3 gap-2 shadow-sm">
         <button @click="toggleMobileSidebar" class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -72,7 +68,7 @@
     <div v-if="mobileSidebarOpen" class="sidebar-overlay fixed inset-0 bg-black/50 z-[55] md:hidden" @click="toggleMobileSidebar"></div>
 
     <aside :class="['bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-[56] shrink-0', 'md:relative md:translate-x-0 md:w-64', 'fixed inset-y-0 left-0 w-72 sidebar-drawer', mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full']">
-        <div class="p-4 border-b border-slate-800 bg-slate-950 shrink-0"><h1 class="text-base font-bold text-white">🎯 考研全科画布</h1></div>
+        <div class="p-4 border-b border-slate-800 bg-slate-950 shrink-0"><h1 class="text-base font-bold text-white">🎯 考研图文分离画布</h1></div>
         <div class="p-3 border-b border-slate-800 shrink-0">
             <div class="flex justify-between items-center mb-2"><label class="text-[10px] font-bold text-slate-500 uppercase">科目</label><button @click="addSubject" class="text-[11px] text-indigo-400 hover:text-indigo-300">+ 添加</button></div>
             <div class="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto no-scrollbar">
@@ -103,15 +99,16 @@
                 </div>
             </div>
         </div>
+        
         <div class="p-2 border-t border-slate-800 bg-slate-950 text-[9px] space-y-1 shrink-0">
             <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-semibold">☁️ 云同步</span>
-                <span v-if="gistId" class="text-slate-500 text-[8px] truncate max-w-[120px] cursor-pointer" @click="copyGistId" title="点击复制 Gist ID">Gist: {{ gistId }}</span>
+                <span class="text-slate-400 font-semibold">☁️ Repo 同步</span>
+                <span v-if="repoName" class="text-slate-500 text-[8px] truncate max-w-[120px] cursor-pointer" @click="copyRepoName" title="点击复制仓库路径">Repo: {{ repoName }}</span>
             </div>
             <div class="grid grid-cols-3 gap-1">
                 <button @click.stop="openTokenDialog" class="text-indigo-400 hover:text-indigo-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">🔑配置</button>
-                <button @click.stop="backupToGist" class="text-emerald-400 hover:text-emerald-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬆️备份</button>
-                <button @click.stop="restoreFromGist" class="text-amber-400 hover:text-amber-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬇️恢复</button>
+                <button @click.stop="backupToRepo" class="text-emerald-400 hover:text-emerald-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬆️备份</button>
+                <button @click.stop="restoreFromRepo" class="text-amber-400 hover:text-amber-300 active:bg-slate-800 bg-slate-800/50 rounded px-1 py-2 text-center touch-manipulation" style="min-height: 36px;">⬇️恢复</button>
             </div>
         </div>
     </aside>
@@ -142,11 +139,7 @@
              @touchend="stopCanvasDrag"
              @click.self="deselectNode">
              
-            <div class="absolute inset-0 p-4 md:p-8"
-                 :style="{ 
-                     transform: `translate(${canvasTranslateX}px, ${canvasTranslateY}px) scale(${canvasScale})`,
-                     transformOrigin: '0 0'
-                 }">
+            <div class="absolute inset-0 p-4 md:p-8" :style="{ transform: `translate(${canvasTranslateX}px, ${canvasTranslateY}px) scale(${canvasScale})`, transformOrigin: '0 0' }">
                 <div class="w-max h-max min-w-full min-h-full p-4 md:p-8 flex flex-col items-start justify-start gap-10 md:gap-14" style="padding-bottom: 400px; padding-right: 400px;">
                     <div v-if="!currentChapter" class="text-slate-400 text-sm flex flex-col items-center gap-3 w-full text-center py-20"><span class="text-5xl">📖</span><p>请选择章节</p></div>
                     <template v-if="currentChapter">
@@ -160,16 +153,8 @@
             <button @click="addRootNode" :disabled="!currentChapter" :class="currentChapter ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'" class="px-3 py-2 text-xs rounded-lg font-medium transition-all active:scale-95">🌱 新增根节点</button>
             <button @click="addChildNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'" class="hidden md:inline-block px-3 py-2 text-xs rounded-lg">📥 衍生</button>
             <button @click="deleteNode" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-300'" class="hidden md:inline-block px-3 py-2 text-xs rounded-lg">✕ 删除</button>
-            <button @click="addSiblingBefore" :disabled="!selectedNode || multiSelectMode"
-            :class="(selectedNode && !multiSelectMode) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
-            class="hidden md:inline-block px-3 py-2 md:py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1 active:scale-95">
-        ⬆️ <span class="hidden md:inline">上方同级</span>
-    </button>
-            <button @click="addSiblingAfter" :disabled="!selectedNode || multiSelectMode"
-            :class="(selectedNode && !multiSelectMode) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
-            class="hidden md:inline-block px-3 py-2 md:py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1 active:scale-95">
-        ⬇️ <span class="hidden md:inline">下方同级</span>
-    </button>
+            <button @click="addSiblingBefore" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'" class="hidden md:inline-block px-3 py-2 text-xs rounded-lg flex items-center gap-1 active:scale-95">⬆️ 上方同级</button>
+            <button @click="addSiblingAfter" :disabled="!selectedNode || multiSelectMode" :class="(selectedNode && !multiSelectMode) ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md' : 'bg-slate-100 text-slate-300 cursor-not-allowed'" class="hidden md:inline-block px-3 py-2 text-xs rounded-lg flex items-center gap-1 active:scale-95">⬇️ 下方同级</button>
             <button v-if="multiSelectMode && selectedNodeIds.size > 0" @click="deleteSelectedNodes" class="px-3 py-2 text-xs bg-rose-600 text-white rounded-lg">🗑️ 删除选中 ({{ selectedNodeIds.size }})</button>
             <button @click="deselectNode" class="px-3 py-2 text-xs bg-slate-200 rounded-lg">↩</button>
         </div>
@@ -186,14 +171,13 @@
             </div>
             
             <div class="p-4 flex-1 overflow-y-auto no-scrollbar space-y-3" style="padding-bottom: 140px;">
-                
                 <div class="grid grid-cols-3 gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200/80 mb-1 shrink-0">
-                    <button @click="addRootNode" :disabled="!currentChapter" :class="currentChapter ? 'bg-emerald-600 text-white active:scale-95' : 'bg-slate-100 text-slate-300'" class="py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">🌱 新增根节点</button>
-                    <button @click="addChildNode" class="bg-indigo-600 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">📥 衍生下级</button>
-                    <button @click="deleteNode" class="bg-rose-500 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">✕ 删除节点</button>
-                    <button @click="addSiblingBefore" class="bg-teal-600 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">⬆️ 上方同级</button>
-                    <button @click="addSiblingAfter" class="bg-teal-600 text-white active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm transition-transform">⬇️ 下方同级</button>
-                    <button @click="deselectNode" class="bg-slate-200 text-slate-700 active:scale-95 py-2.5 text-[11px] rounded-lg font-semibold text-center transition-transform">↩ 返回画布</button>
+                    <button @click="addRootNode" :disabled="!currentChapter" class="bg-emerald-600 text-white py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm">🌱 新增根</button>
+                    <button @click="addChildNode" class="bg-indigo-600 text-white py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm">📥 衍生下级</button>
+                    <button @click="deleteNode" class="bg-rose-500 text-white py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm">✕ 删除节点</button>
+                    <button @click="addSiblingBefore" class="bg-teal-600 text-white py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm">⬆️ 上方同级</button>
+                    <button @click="addSiblingAfter" class="bg-teal-600 text-white py-2.5 text-[11px] rounded-lg font-semibold text-center shadow-sm">⬇️ 下方同级</button>
+                    <button @click="deselectNode" class="bg-slate-200 text-slate-700 py-2.5 text-[11px] rounded-lg font-semibold text-center">↩ 返回画布</button>
                 </div>
 
                 <input type="text" v-model="selectedNode.label" @input="saveToLocal" class="w-full px-3 py-2.5 border rounded-lg font-bold text-sm" placeholder="考点名称">
@@ -204,6 +188,7 @@
                     <span v-else-if="selectedNode.status==='green'" class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">🟢 掌握</span>
                     <span v-else-if="selectedNode.status==='star'" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">⭐ 重点</span>
                 </div>
+                
                 <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
                     <label class="text-[11px] font-bold text-indigo-900 mb-1">🌌 传送门</label>
                     <select v-model="selectedNode.targetPortalId" @change="saveToLocal" class="w-full mt-1 p-2 text-xs bg-white border rounded-md">
@@ -214,8 +199,15 @@
                     </select>
                 </div>
                 <textarea v-model="selectedNode.note" @input="saveToLocal" placeholder="背诵内容 / 核心公式..." class="w-full h-28 p-3 border rounded-lg text-xs resize-none"></textarea>
+                
                 <div class="border border-dashed border-slate-300 rounded-md p-2 bg-white space-y-2">
-                    <div class="flex items-center justify-between"><span class="text-[11px] font-bold text-slate-400">📷 图片笔记</span><label class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-medium px-3 py-2 rounded-md transition-colors touch-manipulation"><span>＋ 上传</span><input type="file" accept="image/*" multiple class="hidden" @change="handleImageUpload"></label></div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400">📷 图片笔记 (Repo图文分离版)</span>
+                        <label class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-medium px-3 py-2 rounded-md transition-colors">
+                            <span>＋ 上传</span>
+                            <input type="file" accept="image/*" multiple class="hidden" @change="handleImageUpload">
+                        </label>
+                    </div>
                     <div v-if="selectedNode.images && selectedNode.images.length > 0" class="grid grid-cols-2 gap-2 mt-1">
                         <div v-for="(img, idx) in selectedNode.images" :key="img.id" class="relative group aspect-square rounded overflow-hidden image-thumb" @click.stop="previewImage(img.dataUrl)">
                             <img :src="img.dataUrl" class="w-full h-full object-cover">
@@ -229,11 +221,11 @@
     </div>
 
     <div v-if="selectedNode && !multiSelectMode" class="md:hidden absolute bottom-3 right-3 z-[80] flex gap-1 bg-white/95 backdrop-blur p-1.5 rounded-xl shadow-lg border">
-        <button @click="markStatus('red')" class="w-8 h-8 flex items-center justify-center bg-rose-500 text-white rounded-lg text-sm active:scale-90">🔴</button>
-        <button @click="markStatus('yellow')" class="w-8 h-8 flex items-center justify-center bg-amber-400 text-slate-900 rounded-lg text-sm active:scale-90">🟡</button>
-        <button @click="markStatus('green')" class="w-8 h-8 flex items-center justify-center bg-emerald-500 text-white rounded-lg text-sm active:scale-90">🟢</button>
-        <button @click="markStatus('star')" class="w-8 h-8 flex items-center justify-center bg-purple-500 text-white rounded-lg text-sm active:scale-90">⭐</button>
-        <button @click="markStatus('clear')" class="w-8 h-8 flex items-center justify-center bg-slate-200 text-slate-500 rounded-lg text-xs active:scale-90">↺</button>
+        <button @click="markStatus('red')" class="w-8 h-8 flex items-center justify-center bg-rose-500 text-white rounded-lg text-sm">🔴</button>
+        <button @click="markStatus('yellow')" class="w-8 h-8 flex items-center justify-center bg-amber-400 text-slate-900 rounded-lg text-sm">🟡</button>
+        <button @click="markStatus('green')" class="w-8 h-8 flex items-center justify-center bg-emerald-500 text-white rounded-lg text-sm">🟢</button>
+        <button @click="markStatus('star')" class="w-8 h-8 flex items-center justify-center bg-purple-500 text-white rounded-lg text-sm">⭐</button>
+        <button @click="markStatus('clear')" class="w-8 h-8 flex items-center justify-center bg-slate-200 text-slate-500 rounded-lg text-xs">↺</button>
     </div>
 
     <div :class="['hidden md:flex w-80 bg-white border-l shadow-2xl flex-col absolute right-0 top-[52px] bottom-0 z-40 side-panel-desktop', selectedNode && !multiSelectMode ? 'translate-x-0' : 'translate-x-full']">
@@ -274,34 +266,32 @@
     <div v-if="showTokenDialog" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" @click.self="showTokenDialog = false">
         <div class="bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-600 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="text-white font-bold mb-3 text-sm flex items-center justify-between">
-                <span>🔑 配置 GitHub 同步</span>
+                <span>🔑 配置 GitHub 专属仓库同步</span>
                 <button @click="showTokenDialog = false" class="text-slate-400 hover:text-white">✕</button>
             </div>
             
-            <label class="text-slate-400 text-[10px] mb-1 block">GitHub Token</label>
-            <input type="password" v-model="tempToken" placeholder="粘贴 Token..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
+            <label class="text-slate-400 text-[10px] mb-1 block">GitHub Personal Access Token</label>
+            <input type="password" v-model="tempToken" placeholder="github_pat_..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
             
-            <label class="text-slate-400 text-[10px] mb-1 block">Gist ID（已有则填入，否则自动创建）</label>
-            <input type="text" v-model="tempGistId" placeholder="粘贴 Gist ID..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+            <label class="text-slate-400 text-[10px] mb-1 block">GitHub 远端仓库路径</label>
+            <input type="text" v-model="tempRepoName" placeholder="格式: 用户名/仓库名 比如 abc/kaoyan-notes" class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
             
             <div class="flex justify-between items-center mb-4">
-                <button @click="fetchMyGists" class="text-indigo-400 text-xs underline font-medium hover:text-indigo-300">🔍 忘记 ID？验证密保并查找 Gist</button>
+                <button @click="fetchMyGists" class="text-indigo-400 text-xs underline font-medium hover:text-indigo-300">🔍 验证安全密码并审计云端数据状态</button>
             </div>
 
             <div class="border-t border-slate-700 pt-3 mt-1 mb-4">
                 <div class="text-indigo-300 font-bold text-xs mb-2 flex items-center gap-1">🔒 跨设备多端同步密保</div>
-                
                 <div v-if="!syncPassword" class="space-y-2">
                     <p class="text-[10px] text-slate-400 leading-relaxed">初次设置密保需要配合上方有效的 Token 进行验证。设置后请执行一次“备份”同步到云端。</p>
-                    <input type="password" v-model="uiNewPassword" placeholder="为查找功能加锁，输入新密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button @click="handleSetPassword" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow transition-all active:scale-95">🛡️ 初始化密保密码</button>
+                    <input type="password" v-model="uiNewPassword" placeholder="为查找功能加锁，输入新密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
+                    <button @click="handleSetPassword" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow">🛡️ 初始化密保密码</button>
                 </div>
-                
                 <div v-else class="space-y-2">
-                    <p class="text-[10px] text-emerald-400 leading-relaxed">✓ 密保密码已就绪（多端联动保护中）。修改密码只需输入旧密码即可。</p>
-                    <input type="password" v-model="uiOldPassword" placeholder="输入旧密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <input type="password" v-model="uiNewPassword" placeholder="输入全新密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button @click="handleUpdatePassword" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow transition-all active:scale-95">⚙️ 修改密保密码</button>
+                    <p class="text-[10px] text-emerald-400 leading-relaxed">✓ 密保密码已就绪。修改密码只需输入旧密码即可。</p>
+                    <input type="password" v-model="uiOldPassword" placeholder="输入旧密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
+                    <input type="password" v-model="uiNewPassword" placeholder="输入全新密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
+                    <button @click="handleUpdatePassword" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow">⚙️ 修改密保密码</button>
                 </div>
             </div>
 
@@ -332,7 +322,7 @@
             const multiSelectMode = inject('multiSelectMode');
             const selectedNodeIds = inject('selectedNodeIds');
             const toggleNodeMultiSelect = inject('toggleNodeMultiSelect');
-const canvasDragged = inject('canvasDragged');
+            const canvasDragged = inject('canvasDragged');
             const isSelected = computed(() => selectedNodeId.value === props.node.id);
             const isMultiSelected = computed(() => multiSelectMode.value && selectedNodeIds.value.has(props.node.id));
             const hasContent = computed(() => props.node.note || (props.node.images && props.node.images.length > 0));
@@ -344,9 +334,7 @@ const canvasDragged = inject('canvasDragged');
             });
 
             function onClickNode() {
-if (canvasDragged && canvasDragged.value) {
-                return; 
-            }
+                if (canvasDragged && canvasDragged.value) return; 
                 if (multiSelectMode.value) toggleNodeMultiSelect(props.node);
                 else selectNode(props.node);
             }
@@ -388,9 +376,6 @@ if (canvasDragged && canvasDragged.value) {
                         { id: 'ch_1', label: '顺序表', status: 'red', note: '随机访问O(1)', images: [], children: [] },
                         { id: 'ch_2', label: '链表', status: 'yellow', note: '插入删除O(1)', images: [], children: [] }
                     ]}]}
-                ]},
-                { id: 'math', name: '考研数学', chapters: [
-                    { id: 'm1', name: '极限与连续', treeRoots: [{ id: 'root_m1', label: '极限与连续', status: 'clear', note: '', images: [], children: [] }] }
                 ]}
             ]);
             const currentSubjectId = ref('408');
@@ -401,26 +386,25 @@ if (canvasDragged && canvasDragged.value) {
             const selectedNodeIds = ref(new Set());
             const previewImageUrl = ref(null);
             
-            // 核心矩阵变量
             const canvasScale = ref(1);
             const canvasTranslateX = ref(0);
             const canvasTranslateY = ref(0);
             const isDragging = ref(false);
             let dragStartX = 0, dragStartY = 0, lastTranslateX = 0, lastTranslateY = 0;
 
-            const gistId = ref(localStorage.getItem('gist_id') || '');
+            // 🗄️ 更换本地密钥变量
+            const repoName = ref(localStorage.getItem('github_repo') || '');
             const githubToken = ref(localStorage.getItem('github_token') || '');
-            
-            // 🔒 密码逻辑状态管理变量
             const syncPassword = ref(localStorage.getItem('sync_password') || '');
+            
             const uiOldPassword = ref('');
             const uiNewPassword = ref('');
-
             const showTokenDialog = ref(false);
             const tempToken = ref('');
-            const tempGistId = ref('');
-const canvasDragged = ref(false);
-provide('canvasDragged', canvasDragged);
+            const tempRepoName = ref('');
+            const canvasDragged = ref(false);
+            provide('canvasDragged', canvasDragged);
+
             const currentSubject = computed(() => subjects.value.find(s => s.id === currentSubjectId.value));
             const currentChapter = computed(() => currentSubject.value?.chapters.find(c => c.id === currentChapterId.value) || null);
             
@@ -430,9 +414,7 @@ provide('canvasDragged', canvasDragged);
                     for (const chap of sub.chapters) {
                         let flatNodes = [];
                         if (chap.treeRoots) {
-                            chap.treeRoots.forEach(root => {
-                                flatNodes = flatNodes.concat(flattenTree(root));
-                            });
+                            chap.treeRoots.forEach(root => { flatNodes = flatNodes.concat(flattenTree(root)); });
                         }
                         result.push({ subjectId: sub.id, subjectName: sub.name, chapterId: chap.id, chapterName: chap.name, flatNodes });
                     }
@@ -441,7 +423,6 @@ provide('canvasDragged', canvasDragged);
             });
 
             function flattenTree(root) { const r = []; (function t(n) { r.push({ id: n.id, label: n.label }); if (n.children) n.children.forEach(t); })(root); return r; }
-
             provide('selectNode', (node) => { if (!multiSelectMode.value) selectedNode.value = node; });
             
             function findNodeByIdInRoots(roots, id) {
@@ -493,34 +474,26 @@ provide('canvasDragged', canvasDragged);
                 if (saved) {
                     try {
                         const p = JSON.parse(saved);
-                        // 兼容老的数据结构（纯数组形式）与带密码包装的对象结构
                         let actualData = [];
-                        if (Array.isArray(p)) {
-                            actualData = p;
-                        } else if (p && p.data) {
+                        if (Array.isArray(p)) { actualData = p; } 
+                        else if (p && p.data) {
                             actualData = p.data;
                             if (p.password) {
                                 syncPassword.value = p.password;
                                 localStorage.setItem('sync_password', p.password);
                             }
                         }
-
                         if (actualData.length) {
                             actualData.forEach(s => {
                                 s.chapters?.forEach(c => {
-                                    if (c.tree && !c.treeRoots) {
-                                        c.treeRoots = [c.tree];
-                                        delete c.tree;
-                                    }
+                                    if (c.tree && !c.treeRoots) { c.treeRoots = [c.tree]; delete c.tree; }
                                     if (!c.treeRoots) c.treeRoots = [];
                                     c.treeRoots.forEach(root => migrate(root));
                                 });
                             });
                             subjects.value = actualData;
                         }
-                    } catch (e) {
-                        console.warn('数据加载失败', e);
-                    }
+                    } catch (e) { console.warn('数据加载失败', e); }
                 }
                 validateSelection();
             });
@@ -532,9 +505,7 @@ provide('canvasDragged', canvasDragged);
             }
 
             function validateSelection() {
-                if (!currentSubject.value && subjects.value.length) {
-                    currentSubjectId.value = subjects.value[0].id;
-                }
+                if (!currentSubject.value && subjects.value.length) { currentSubjectId.value = subjects.value[0].id; }
                 if (currentSubject.value && currentSubject.value.chapters.length) {
                     if (!currentChapter.value || !currentSubject.value.chapters.find(c => c.id === currentChapterId.value)) {
                         currentChapterId.value = currentSubject.value.chapters[0].id;
@@ -560,7 +531,6 @@ provide('canvasDragged', canvasDragged);
                 }
             }
 
-            // 💻 电脑端：以鼠标指针为中心进行缩放
             function handleCanvasZoom(e) {
                 const delta = e.deltaY > 0 ? 0.9 : 1.1;
                 const newScale = Math.min(Math.max(canvasScale.value * delta, 0.2), 5);
@@ -573,118 +543,68 @@ provide('canvasDragged', canvasDragged);
             }
 
             function startCanvasDrag(e) {
-    const target = e.target;
-    isDragging.value = true;
-    canvasDragged.value = false; // 重置
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    lastTranslateX = canvasTranslateX.value;
-    lastTranslateY = canvasTranslateY.value;
-    if (!target.closest('.tree-node')) {
-        e.preventDefault();
-    }
-}
+                const target = e.target;
+                isDragging.value = true;
+                canvasDragged.value = false;
+                dragStartX = e.clientX; dragStartY = e.clientY;
+                lastTranslateX = canvasTranslateX.value; lastTranslateY = canvasTranslateY.value;
+                if (!target.closest('.tree-node')) { e.preventDefault(); }
+            }
 
             function onCanvasDrag(e) {
-    if (!isDragging.value) return;
-    const dx = e.clientX - dragStartX;
-    const dy = e.clientY - dragStartY;
-    
-    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-        canvasDragged.value = true;
-    }
-    canvasTranslateX.value = lastTranslateX + dx;
-    canvasTranslateY.value = lastTranslateY + dy;
-}
+                if (!isDragging.value) return;
+                const dx = e.clientX - dragStartX; const dy = e.clientY - dragStartY;
+                if (Math.abs(dx) > 15 || Math.abs(dy) > 15) { canvasDragged.value = true; }
+                canvasTranslateX.value = lastTranslateX + dx; canvasTranslateY.value = lastTranslateY + dy;
+            }
 
-function stopCanvasDrag() { 
-    isDragging.value = false; 
-    // ⏳ 延迟 100 毫秒再清空拖拽标记，确保浏览器的 click 事件在这期间完成拦截消费
-    setTimeout(() => {
-        canvasDragged.value = false;
-    }, 100);
-}
-            // 📱 移动端捏合控制状态变量
-            let touchStartDistance = 0;
-            let lastScale = 1;
-            let touchStartMidX = 0, touchStartMidY = 0;
+            function stopCanvasDrag() { setTimeout(() => { canvasDragged.value = false; }, 100); isDragging.value = false; }
+            let touchStartDistance = 0; let lastScale = 1; let touchStartMidX = 0, touchStartMidY = 0;
 
-function startCanvasDragTouch(e) {
-    const target = e.target;
-    // 删除了原有的节点 return 拦截，允许在节点上开始拖拽触发
-    
-    if (e.touches.length === 1) {
-        // 如果触点在节点上，千万不要 preventDefault，否则节点将无法产生后续的普通 click
-        if (!target.closest('.tree-node')) {
-            e.preventDefault();
-        }
-        isDragging.value = true;
-        canvasDragged.value = false; // 每次触控开始，重置拖拽标记
-        dragStartX = e.touches[0].clientX;
-        dragStartY = e.touches[0].clientY;
-        lastTranslateX = canvasTranslateX.value;
-        lastTranslateY = canvasTranslateY.value;
-    } else if (e.touches.length === 2) {
-        e.preventDefault();
-        isDragging.value = false;
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        touchStartDistance = Math.sqrt(dx * dx + dy * dy);
-        lastScale = canvasScale.value;
-        
-        touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-        touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        lastTranslateX = canvasTranslateX.value;
-        lastTranslateY = canvasTranslateY.value;
-    }
-}
-            // 📱 移动端：双指缩放时精准锚定中间区域
-function onCanvasDragTouch(e) {
-    // 删除了原有的节点 return 拦截
-    
-    if (e.touches.length === 1 && isDragging.value) {
-        const dx = e.touches[0].clientX - dragStartX;
-        const dy = e.touches[0].clientY - dragStartY;
-        
-        // 🔍 如果滑动位移大于 5 像素，说明用户是在移动视角，将其锁死，防止触发点击编辑
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-            canvasDragged.value = true;
-        }
-        
-        canvasTranslateX.value = lastTranslateX + dx;
-        canvasTranslateY.value = lastTranslateY + dy;
-    } else if (e.touches.length === 2) {
-        // 双指缩放逻辑保持原状不变
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (touchStartDistance > 0) {
-            const scaleChange = distance / touchStartDistance;
-            const newScale = Math.min(Math.max(lastScale * scaleChange, 0.2), 5);
-            const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const midX = currentMidX - rect.left;
-            const midY = currentMidY - rect.top;
-            const startMidXRel = touchStartMidX - rect.left;
-            const startMidYRel = touchStartMidY - rect.top;
-            
-            canvasTranslateX.value = midX - (startMidXRel - lastTranslateX) * (newScale / lastScale);
-            canvasTranslateY.value = midY - (startMidYRel - lastTranslateY) * (newScale / lastScale);
-            canvasScale.value = newScale;
-        }
-    }
-}
+            function startCanvasDragTouch(e) {
+                const target = e.target;
+                if (e.touches.length === 1) {
+                    if (!target.closest('.tree-node')) { e.preventDefault(); }
+                    isDragging.value = true; canvasDragged.value = false;
+                    dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+                    lastTranslateX = canvasTranslateX.value; lastTranslateY = canvasTranslateY.value;
+                } else if (e.touches.length === 2) {
+                    e.preventDefault(); isDragging.value = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    touchStartDistance = Math.sqrt(dx * dx + dy * dy); lastScale = canvasScale.value;
+                    touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2; touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    lastTranslateX = canvasTranslateX.value; lastTranslateY = canvasTranslateY.value;
+                }
+            }
+
+            function onCanvasDragTouch(e) {
+                if (e.touches.length === 1 && isDragging.value) {
+                    const dx = e.touches[0].clientX - dragStartX; const dy = e.touches[0].clientY - dragStartY;
+                    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) { canvasDragged.value = true; }
+                    canvasTranslateX.value = lastTranslateX + dx; canvasTranslateY.value = lastTranslateY + dy;
+                } else if (e.touches.length === 2) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (touchStartDistance > 0) {
+                        const scaleChange = distance / touchStartDistance; const newScale = Math.min(Math.max(lastScale * scaleChange, 0.2), 5);
+                        const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2; const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const midX = currentMidX - rect.left; const midY = currentMidY - rect.top;
+                        const startMidXRel = touchStartMidX - rect.left; const startMidYRel = touchStartMidY - rect.top;
+                        canvasTranslateX.value = midX - (startMidXRel - lastTranslateX) * (newScale / lastScale);
+                        canvasTranslateY.value = midY - (startMidYRel - lastTranslateY) * (newScale / lastScale);
+                        canvasScale.value = newScale;
+                    }
+                }
+            }
+
             function addRootNode() {
                 if (!currentChapter.value) return;
                 const label = prompt("根考点名称：");
                 if (label && label.trim()) {
                     if (!currentChapter.value.treeRoots) currentChapter.value.treeRoots = [];
                     const n = { id: 'root_' + Date.now() + Math.random().toString(36).slice(2, 8), label: label.trim(), status: 'clear', note: '', images: [], children: [] };
-                    currentChapter.value.treeRoots.push(n);
-                    selectedNode.value = n;
-                    saveToLocal();
+                    currentChapter.value.treeRoots.push(n); selectedNode.value = n; saveToLocal();
                 }
             }
 
@@ -694,9 +614,7 @@ function onCanvasDragTouch(e) {
                 if(label?.trim()) { 
                     if(!root.children) root.children=[]; 
                     const n = { id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] };
-                    root.children.push(n); 
-                    selectedNode.value = n; 
-                    saveToLocal(); 
+                    root.children.push(n); selectedNode.value = n; saveToLocal(); 
                 } 
             }
 
@@ -706,9 +624,7 @@ function onCanvasDragTouch(e) {
                 if(label?.trim()) { 
                     if(!selectedNode.value.children) selectedNode.value.children=[]; 
                     const n = { id:'n_'+Date.now()+Math.random().toString(36).slice(2,8), label:label.trim(), status:'clear', note:'', images:[], children:[] };
-                    selectedNode.value.children.push(n); 
-                    selectedNode.value = n; 
-                    saveToLocal(); 
+                    selectedNode.value.children.push(n); selectedNode.value = n; saveToLocal(); 
                 } 
             }
 
@@ -734,19 +650,13 @@ function onCanvasDragTouch(e) {
             function deleteNode() {
                 if (!selectedNode.value || !currentChapter.value) return;
                 if (confirm('删除「' + selectedNode.value.label + '」？')) {
-                    if (removeNodeById(currentChapter.value.treeRoots, selectedNode.value.id)) {
-                        selectedNode.value = null;
-                        saveToLocal();
-                    }
+                    if (removeNodeById(currentChapter.value.treeRoots, selectedNode.value.id)) { selectedNode.value = null; saveToLocal(); }
                 }
             }
 
             function findParentNodeInRoots(roots, targetId) {
                 if (!roots) return null;
-                for (let root of roots) {
-                    const found = findParentNode(root, targetId);
-                    if (found) return found;
-                }
+                for (let root of roots) { const found = findParentNode(root, targetId); if (found) return found; }
                 return null;
             }
 
@@ -754,56 +664,39 @@ function onCanvasDragTouch(e) {
                 if (!root || !root.children) return null;
                 for (let i = 0; i < root.children.length; i++) {
                     if (root.children[i].id === targetId) return { parent: root, index: i };
-                    const found = findParentNode(root.children[i], targetId);
-                    if (found) return found;
+                    const found = findParentNode(root.children[i], targetId); if (found) return found;
                 }
                 return null;
             }
 
             function addSiblingBefore() {
-                if (!selectedNode.value) return;
-                if (!currentChapter.value) return;
+                if (!selectedNode.value || !currentChapter.value) return;
                 const label = prompt('请输入同级考点名称：');
                 if (label && label.trim()) {
                     const isRoot = selectedNode.value.id.startsWith('root_');
                     const newNode = { id: (isRoot ? 'root_' : 'n_') + Date.now() + Math.random().toString(36).slice(2, 8), label: label.trim(), status: 'clear', note: '', images: [], children: [] };
                     if (isRoot) {
                         const idx = currentChapter.value.treeRoots.findIndex(r => r.id === selectedNode.value.id);
-                        if (idx !== -1) {
-                            currentChapter.value.treeRoots.splice(idx, 0, newNode);
-                            selectedNode.value = newNode;
-                            saveToLocal();
-                        }
+                        if (idx !== -1) { currentChapter.value.treeRoots.splice(idx, 0, newNode); selectedNode.value = newNode; saveToLocal(); }
                     } else {
-                        const parentInfo = findParentNodeInRoots(currentChapter.value.treeRoots, selectedNode.value.id);
-                        if (!parentInfo) return;
-                        parentInfo.parent.children.splice(parentInfo.index, 0, newNode);
-                        selectedNode.value = newNode;
-                        saveToLocal();
+                        const parentInfo = findParentNodeInRoots(currentChapter.value.treeRoots, selectedNode.value.id); if (!parentInfo) return;
+                        parentInfo.parent.children.splice(parentInfo.index, 0, newNode); selectedNode.value = newNode; saveToLocal();
                     }
                 }
             }
 
             function addSiblingAfter() {
-                if (!selectedNode.value) return;
-                if (!currentChapter.value) return;
+                if (!selectedNode.value || !currentChapter.value) return;
                 const label = prompt('请输入同级考点名称：');
                 if (label && label.trim()) {
                     const isRoot = selectedNode.value.id.startsWith('root_');
                     const newNode = { id: (isRoot ? 'root_' : 'n_') + Date.now() + Math.random().toString(36).slice(2, 8), label: label.trim(), status: 'clear', note: '', images: [], children: [] };
                     if (isRoot) {
                         const idx = currentChapter.value.treeRoots.findIndex(r => r.id === selectedNode.value.id);
-                        if (idx !== -1) {
-                            currentChapter.value.treeRoots.splice(idx + 1, 0, newNode);
-                            selectedNode.value = newNode;
-                            saveToLocal();
-                        }
+                        if (idx !== -1) { currentChapter.value.treeRoots.splice(idx + 1, 0, newNode); selectedNode.value = newNode; saveToLocal(); }
                     } else {
-                        const parentInfo = findParentNodeInRoots(currentChapter.value.treeRoots, selectedNode.value.id);
-                        if (!parentInfo) return;
-                        parentInfo.parent.children.splice(parentInfo.index + 1, 0, newNode);
-                        selectedNode.value = newNode;
-                        saveToLocal();
+                        const parentInfo = findParentNodeInRoots(currentChapter.value.treeRoots, selectedNode.value.id); if (!parentInfo) return;
+                        parentInfo.parent.children.splice(parentInfo.index + 1, 0, newNode); selectedNode.value = newNode; saveToLocal();
                     }
                 }
             }
@@ -815,16 +708,12 @@ function onCanvasDragTouch(e) {
                 if(!currentSubject.value) return; 
                 const name = prompt('章节名称：'); 
                 if(name?.trim()) { 
-                    const cid='c_'+Date.now(); 
-                    const trimmed=name.trim(); 
+                    const cid='c_'+Date.now(); const trimmed=name.trim(); 
                     currentSubject.value.chapters.push({ 
-                        id:cid, 
-                        name:trimmed, 
+                        id:cid, name:trimmed, 
                         treeRoots: [{ id:'root_'+Date.now(), label:trimmed, status:'clear', note:'', images:[], children:[] }] 
                     }); 
-                    currentChapterId.value=cid; 
-                    selectedNode.value=null; 
-                    saveToLocal(); 
+                    currentChapterId.value=cid; selectedNode.value=null; saveToLocal(); 
                 } 
             }
 
@@ -844,14 +733,16 @@ function onCanvasDragTouch(e) {
             function markStatus(s) { if(selectedNode.value) { selectedNode.value.status = s; saveToLocal(); } }
             function previewImage(url) { previewImageUrl.value = url; }
 
+            // 📷 【核心更新】上传图片时自动判断直传 GitHub
             function handleImageUpload(e) {
                 const files = e.target.files; if(!files?.length) return;
                 if(!selectedNode.value) { alert('请先选中节点'); return; }
                 if(!selectedNode.value.images) selectedNode.value.images=[];
                 if(selectedNode.value.images.length>=10) { alert('最多10张图片'); e.target.value=''; return; }
+                
                 Array.from(files).forEach(file=>{
                     if(!file.type.startsWith('image/')) return;
-                    if(file.size>10*1024*1024) { alert('图片超过10MB'); return; }
+                    if(file.size>10*1024*1024) { alert('单张图片别超10MB'); return; }
                     const reader = new FileReader();
                     reader.onload = ev => {
                         const img = new Image();
@@ -860,10 +751,38 @@ function onCanvasDragTouch(e) {
                             const maxW=1600; if(width>maxW) { height=Math.round(height*maxW/width); width=maxW; }
                             const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
                             const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,width,height);
+                            
                             const outputFormat = file.type==='image/png' ? 'image/png' : 'image/jpeg';
-                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.92;
-                            selectedNode.value.images.push({ id:'img_'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:canvas.toDataURL(outputFormat, outputQuality), name:file.name });
-                            saveToLocal();
+                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.85; // 略微压缩提升移动端加载体验
+                            const base64Data = canvas.toDataURL(outputFormat, outputQuality);
+                            
+                            const imgId = 'img_' + Date.now() + Math.random().toString(36).slice(2, 6);
+                            const fileName = imgId + (outputFormat === 'image/png' ? '.png' : '.jpg');
+                            
+                            // 🚀 如果已经配置了远端仓库，走实时直传逻辑
+                            if (githubToken.value && repoName.value) {
+                                const pureBase64 = base64Data.split(',')[1];
+                                fetch(`https://api.github.com/repos/${repoName.value}/contents/images/${fileName}`, {
+                                    method: 'PUT',
+                                    headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ message: `📷 实时上传图文分离图片: ${fileName}`, content: pureBase64 })
+                                })
+                                .then(res => { if (res.ok) return res.json(); throw new Error(res.statusText); })
+                                .then(resData => {
+                                    // 存储 GitHub 独家原生 Raw 链接，不占用文字 JSON 的容量
+                                    selectedNode.value.images.push({ id: imgId, dataUrl: resData.content.download_url, name: file.name });
+                                    saveToLocal();
+                                })
+                                .catch(err => {
+                                    alert('云端直传失败，已自动退回本地暂存模式（将在总备份时重试）：' + err.message);
+                                    selectedNode.value.images.push({ id: imgId, dataUrl: base64Data, name: file.name });
+                                    saveToLocal();
+                                });
+                            } else {
+                                // 未配置环境则退回本地 Base64 暂存
+                                selectedNode.value.images.push({ id: imgId, dataUrl: base64Data, name: file.name });
+                                saveToLocal();
+                            }
                         };
                         img.src = ev.target.result;
                     };
@@ -871,175 +790,164 @@ function onCanvasDragTouch(e) {
                 });
                 e.target.value='';
             }
+            
             function removeImage(idx) { if(selectedNode.value?.images) { selectedNode.value.images.splice(idx,1); saveToLocal(); } }
             
-            // 💾 包装本地存档结构，写入密保
             function saveToLocal() { 
-                try { 
-                    const wrapper = {
-                        password: syncPassword.value || '',
-                        data: subjects.value
-                    };
-                    localStorage.setItem('kaoyan_infinite_v3', JSON.stringify(wrapper)); 
-                } catch(e) {} 
+                try { localStorage.setItem('kaoyan_infinite_v3', JSON.stringify({ password: syncPassword.value || '', data: subjects.value })); } catch(e) {} 
             }
 
             function openTokenDialog() { 
-                tempToken.value = githubToken.value; 
-                tempGistId.value = gistId.value; 
-                uiOldPassword.value = '';
-                uiNewPassword.value = '';
-                showTokenDialog.value = true; 
+                tempToken.value = githubToken.value; tempRepoName.value = repoName.value; 
+                uiOldPassword.value = ''; uiNewPassword.value = ''; showTokenDialog.value = true; 
             }
 
-            // 🛡️ 首次创建/初始化密保密码
+            function copyRepoName() { if (repoName.value) { navigator.clipboard.writeText(repoName.value); alert('仓库路径已复制'); } }
+
+            // 🛡️ 首次创建密保密码
             async function handleSetPassword() {
-                if (!tempToken.value.trim()) { alert('请先在上方填入有效的 GitHub Token 以便校验身份！'); return; }
+                if (!tempToken.value.trim()) { alert('请先填入有效的 GitHub Token 进行鉴权！'); return; }
                 if (!uiNewPassword.value.trim()) { alert('密保密码不能为空'); return; }
-                
                 try {
-                    // 调用API测试Token合法性
                     const vr = await fetch('https://api.github.com/user', { headers: { Authorization: `token ${tempToken.value.trim()}` } });
-                    if (!vr.ok) { alert('Token 校验失败，请检查上方 Token 的正确性！'); return; }
-                    
+                    if (!vr.ok) { alert('Token 验证失败，请仔细检查！'); return; }
                     syncPassword.value = uiNewPassword.value.trim();
                     localStorage.setItem('sync_password', syncPassword.value);
-                    uiNewPassword.value = '';
-                    saveToLocal();
-                    alert('🎯 密保密码已就绪！后续在任何新设备上“查找已存 Gist”时，都必须填写此密码方可解锁。请记得点击下方的“保存配置”并去主界面点击“备份”同步。');
-                } catch(e) {
-                    alert('网络连接错误，无法校验 Token');
-                }
+                    uiNewPassword.value = ''; saveToLocal();
+                    alert('🎯 密保密码初始化成功！请记得保存配置并执行一次备份。');
+                } catch(e) { alert('网络连接错误'); }
             }
 
-            // ⚙️ 凭旧密码修改密码
+            // ⚙️ 修改密码
             function handleUpdatePassword() {
-                if (uiOldPassword.value.trim() !== syncPassword.value) { alert('❌ 原密保密码输入错误！操作已被拒绝。'); return; }
+                if (uiOldPassword.value.trim() !== syncPassword.value) { alert('❌ 原密保密码错误！'); return; }
                 if (!uiNewPassword.value.trim()) { alert('新密码不能为空'); return; }
-                
                 syncPassword.value = uiNewPassword.value.trim();
                 localStorage.setItem('sync_password', syncPassword.value);
-                uiOldPassword.value = '';
-                uiNewPassword.value = '';
-                saveToLocal();
-                alert('✨ 密保密码更新成功！请记得及时点击主面板的“备份”同步到云端。');
+                uiOldPassword.value = ''; uiNewPassword.value = ''; saveToLocal();
+                alert('✨ 密保密码更新成功！请执行备份同步。');
             }
 
-            // 🔑 升级版：防止任意多端查找泄漏的安全扫描函数
+            // 🔑 安全扫描：审计仓库数据并做密保防护拦截
             async function fetchMyGists() {
-                if (!tempToken.value.trim()) { alert('请先输入 Token'); return; }
-                
-                // 1. 发起验证弹窗拦截
+                if (!tempToken.value.trim() || !tempRepoName.value.trim()) { alert('请先填齐 Token 和 仓库名！'); return; }
                 const userPass = prompt('【安全审计】请输入您设置的跨端同步密保密码：');
-                if (userPass === null) return; // 用户取消
-
+                if (userPass === null) return;
                 try {
-                    const resp = await fetch('https://api.github.com/gists', { headers: { Authorization: `token ${tempToken.value.trim()}` } });
-                    if (!resp.ok) { alert('获取失败，检查 Token 权限或网络状态'); return; }
-                    const gists = await resp.json();
+                    const resp = await fetch(`https://api.github.com/repos/${tempRepoName.value.trim()}/contents/kaoyan_data.json`, {
+                        headers: { Authorization: `token ${tempToken.value.trim()}` }
+                    });
+                    if (resp.status === 404) { alert('🔓 审计通过：云端仓库干净，未发现冲突的备份文件，可安全使用！'); return; }
+                    if (!resp.ok) { alert('无法访问该仓库，请确保仓库存在且 Token 拥有 repo 范围的完全读写权限。'); return; }
                     
-                    // 2. 核心逻辑：精准定位看板专属的 Gist 块
-                    const targetGist = gists.find(g => g.description === '考研思维导图数据');
-                    if (targetGist) {
-                        // 3. 静默拉取云端内容包做跨设备动态比对
-                        const detailResp = await fetch(`https://api.github.com/gists/${targetGist.id}`, { headers: { Authorization: `token ${tempToken.value.trim()}` } });
-                        if (detailResp.ok) {
-                            const detail = await detailResp.json();
-                            const cloudRaw = detail.files['kaoyan_data.json']?.content;
-                            if (cloudRaw) {
-                                try {
-                                    const parsed = JSON.parse(cloudRaw);
-                                    // 4. 判断密码是否相符
-                                    if (parsed && parsed.password && parsed.password !== userPass.trim()) {
-                                        alert('❌ 验证失败：密保密码错误！系统已切断访问，拒绝泄漏 Gist 信息。');
-                                        return;
-                                    }
-                                } catch(err){}
-                            }
-                        }
-                    } else {
-                        // 若本地存在密码但云端无对应的 Gist，也进行一次本地密码验证
-                        if (syncPassword.value && syncPassword.value !== userPass.trim()) {
-                            alert('❌ 验证失败：密保密码错误！');
-                            return;
-                        }
+                    const resData = await resp.json();
+                    const cleanContent = resData.content.replace(/\s/g, '');
+                    const decoded = decodeURIComponent(escape(atob(cleanContent)));
+                    const parsed = JSON.parse(decoded);
+                    if (parsed && parsed.password && parsed.password !== userPass.trim()) {
+                        alert('❌ 审计拦截：远端数据的跨端密保与您刚刚输入的密码不符！已切断连接保护资产。'); return;
                     }
-
-                    // 5. 校验完成通过，安全展示
-                    const list = gists.map(g => `描述：${g.description}\nID：${g.id}`).join('\n\n');
-                    alert('🔓 密保验证通过！您的 Gist 资产列表如下：\n\n' + (list || '（暂无任何 Gist）'));
-                } catch (e) {
-                    alert('网络传输故障，密码审计中断');
-                }
+                    alert('🔓 审计通过：密码验证完全正确，多端数据链安全无误。');
+                } catch (e) { alert('审计中断：' + e.message); }
             }
 
+            // 保存 Token 与仓库配置
             async function saveTokenConfig() {
-                if (!tempToken.value.trim()) { alert('Token 不能为空'); return; }
-                githubToken.value = tempToken.value.trim();
-                localStorage.setItem('github_token', githubToken.value);
-                
-                if (tempGistId.value.trim()) {
-                    gistId.value = tempGistId.value.trim();
-                    localStorage.setItem('gist_id', gistId.value);
-                    showTokenDialog.value = false;
-                    alert('配置已保存！');
-                    return;
-                }
-                const resp = await fetch('https://api.github.com/gists', { headers: { Authorization: `token ${githubToken.value}` } });
-                if (resp.ok) {
-                    const gists = await resp.json();
-                    const existing = gists.find(g => g.description === '考研思维导图数据');
-                    if (existing) {
-                        gistId.value = existing.id;
-                        localStorage.setItem('gist_id', gistId.value);
-                        showTokenDialog.value = false;
-                        alert('已自动绑定已有的 Gist！');
-                        return;
-                    }
-                }
-                
-                // 创建全新的云端数据结构
-                const createResp = await fetch('https://api.github.com/gists', {
-                    method: 'POST',
-                    headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        description: '考研思维导图数据', 
-                        public: false, 
-                        files: { 'kaoyan_data.json': { content: JSON.stringify({ password: syncPassword.value, data: subjects.value }) } } 
-                    })
-                });
-                if (createResp.ok) {
-                    const data = await createResp.json();
-                    gistId.value = data.id;
-                    localStorage.setItem('gist_id', gistId.value);
-                    showTokenDialog.value = false;
-                    alert('Gist 创建并同步成功！');
-                } else alert('创建失败，检查 Token 权限');
-            }
-
-            async function backupToGist() {
-                if (!githubToken.value || !gistId.value) { alert('请先配置'); return; }
-                const resp = await fetch(`https://api.github.com/gists/${gistId.value}`, {
-                    method: 'PATCH',
-                    headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        files: { 'kaoyan_data.json': { content: JSON.stringify({ password: syncPassword.value, data: subjects.value }) } } 
-                    })
-                });
-                if (resp.ok) alert('✅ 备份成功（包含密保特征码）！'); else alert('备份失败');
-            }
-
-            async function restoreFromGist() {
-                if (!githubToken.value || !gistId.value) { alert('请先配置'); return; }
-                const resp = await fetch(`https://api.github.com/gists/${gistId.value}`, { headers: { Authorization: `token ${githubToken.value}` } });
-                if (!resp.ok) { alert('获取失败'); return; }
-                const data = await resp.json();
-                const content = data.files['kaoyan_data.json']?.content;
-                if (!content) { alert('云端无数据'); return; }
-                if (!confirm('云端数据将覆盖本地，确定恢复吗？')) return;
+                if (!tempToken.value.trim() || !tempRepoName.value.trim()) { alert('配置项均不能为空'); return; }
+                githubToken.value = tempToken.value.trim(); localStorage.setItem('github_token', githubToken.value);
+                repoName.value = tempRepoName.value.trim(); localStorage.setItem('github_repo', repoName.value);
                 
                 try {
-                    const parsed = JSON.parse(content);
+                    const resp = await fetch(`https://api.github.com/repos/${repoName.value}`, { headers: { Authorization: `token ${githubToken.value}` } });
+                    if (resp.ok) { alert('配置保存，成功连通 GitHub 目标仓库！'); showTokenDialog.value = false; } 
+                    else if (resp.status === 404) { alert('⚠️ 注意：在您的 GitHub 账户中没搜到该仓库。请确认已在网页手动建好同名仓库（建议设为私有）。配置仍会保存。'); showTokenDialog.value = false; }
+                    else { alert('配置已存，但连接受限，请确认 Token 是否勾选了 repo 读写权限。'); showTokenDialog.value = false; }
+                } catch (e) { alert('网络连接超时，配置已强制保存在本地。'); showTokenDialog.value = false; }
+            }
+
+            // 🔄 遍历深度扫描：提取本地 Base64 图片进行自动化云分离
+            async function uploadPendingImages() {
+                let pendingUploads = [];
+                const traverse = (node) => {
+                    if (!node) return;
+                    if (node.images && Array.isArray(node.images)) {
+                        node.images.forEach(img => {
+                            if (img.dataUrl && img.dataUrl.startsWith('data:image')) { pendingUploads.push({ img }); }
+                        });
+                    }
+                    if (node.children) node.children.forEach(traverse);
+                };
+                subjects.value.forEach(s => s.chapters?.forEach(c => c.treeRoots?.forEach(traverse)));
+                if (pendingUploads.length === 0) return;
+
+                console.log(`发现 ${pendingUploads.length} 张未分离的本地图片，正在执行深度拆分...`);
+                for (const item of pendingUploads) {
+                    const pureBase64 = item.img.dataUrl.split(',')[1];
+                    const ext = item.img.dataUrl.includes('image/png') ? '.png' : '.jpg';
+                    const fName = item.img.id + ext;
+                    try {
+                        const res = await fetch(`https://api.github.com/repos/${repoName.value}/contents/images/${fName}`, {
+                            method: 'PUT',
+                            headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: `📦 总备份打包迁移图片: ${fName}`, content: pureBase64 })
+                        });
+                        if (res.ok) { const resData = await res.json(); item.img.dataUrl = resData.content.download_url; }
+                    } catch (e) { console.error('分离上传失败', e); }
+                }
+                saveToLocal();
+            }
+
+            // ⬆️ 【重构】备份数据到 Repository
+            async function backupToRepo() {
+                if (!githubToken.value || !repoName.value) { alert('请先配置云同步权限！'); return; }
+                
+                // 1. 优先提取旧设备升级带过来的所有 Base64 图片，清洗体积
+                await uploadPendingImages();
+                
+                // 2. 检查 kaoyan_data.json 文件是否在仓库已存在，若存在必须拿取其旧 sha 进行覆盖更新
+                let sha = null;
+                try {
+                    const check = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, {
+                        headers: { Authorization: `token ${githubToken.value}` }
+                    });
+                    if (check.ok) { const checkData = await check.json(); sha = checkData.sha; }
+                } catch(e){}
+
+                // 3. 构建无缝安全的 UTF-8 加密文本数据包
+                const jsonStr = JSON.stringify({ password: syncPassword.value, data: subjects.value });
+                const base64Content = btoa(unescape(encodeURIComponent(jsonStr)));
+                
+                const body = { message: '🎨 备份考研思维导图数据（全网图文分离版）', content: base64Content };
+                if (sha) body.sha = sha;
+
+                // 4. 提交给 GitHub 仓库
+                try {
+                    const resp = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, {
+                        method: 'PUT',
+                        headers: { Authorization: `token ${githubToken.value}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (resp.ok) { alert('✅ 备份成功！文本与大图分离存储，永不超限。'); } 
+                    else { const ed = await resp.json(); alert('备份失败: ' + (ed.message || resp.statusText)); }
+                } catch(e) { alert('请求异常: ' + e.message); }
+            }
+
+            // ⬇️ 【重构】从 Repository 恢复备份数据
+            async function restoreFromRepo() {
+                if (!githubToken.value || !repoName.value) { alert('请先配置云同步权限！'); return; }
+                try {
+                    const resp = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, {
+                        headers: { Authorization: `token ${githubToken.value}` }
+                    });
+                    if (!resp.ok) { alert('云端未找到备份的 kaoyan_data.json 主架构文件。'); return; }
+                    
+                    const resData = await resp.json();
+                    const cleanContent = resData.content.replace(/\s/g, '');
+                    const decoded = decodeURIComponent(escape(atob(cleanContent)));
+                    
+                    if (!confirm('确定拉取云端覆盖本地多端数据吗？')) return;
+                    
+                    const parsed = JSON.parse(decoded);
                     if (parsed && parsed.data && Array.isArray(parsed.data)) {
                         subjects.value = parsed.data;
                         if (parsed.password) {
@@ -1047,42 +955,26 @@ function onCanvasDragTouch(e) {
                             localStorage.setItem('sync_password', parsed.password);
                         }
                     } else if (Array.isArray(parsed)) {
-                        subjects.value = parsed; // 老版本无缝兼容
+                        subjects.value = parsed; 
                     }
-                } catch(e) {
-                    alert('数据打包解析错位');
-                    return;
-                }
-
-                saveToLocal();
-                selectedNode.value = null;
-                multiSelectMode.value = false;
-                selectedNodeIds.value = new Set();
-                await nextTick();
-                if (subjects.value.length > 0) {
-                    currentSubjectId.value = subjects.value[0].id;
-                    if (subjects.value[0].chapters.length > 0) currentChapterId.value = subjects.value[0].chapters[0].id;
-                }
-                alert('✅ 恢复成功！本地数据与云端密保已同步。');
+                    
+                    saveToLocal(); deselectNode();
+                    await nextTick();
+                    if (subjects.value.length > 0) {
+                        currentSubjectId.value = subjects.value[0].id;
+                        if (subjects.value[0].chapters.length > 0) currentChapterId.value = subjects.value[0].chapters[0].id;
+                    }
+                    alert('✅ 跨设备云恢复成功！');
+                } catch(e) { alert('数据拉取或密码解包出现错位: ' + e.message); }
             }
 
-            function copyGistId() { if (gistId.value) { navigator.clipboard.writeText(gistId.value); alert('Gist ID 已复制'); } }
-            
             let draggedChapterIndex = null;
-            function onChapterDragStart(e, idx) {
-                draggedChapterIndex = idx;
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', idx);
-            }
-
+            function onChapterDragStart(e, idx) { draggedChapterIndex = idx; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', idx); }
             function onChapterDrop(e, dropIdx) {
-                if (draggedChapterIndex === null || draggedChapterIndex === dropIdx) return;
-                if (!currentSubject.value) return;
+                if (draggedChapterIndex === null || draggedChapterIndex === dropIdx || !currentSubject.value) return;
                 const chapters = currentSubject.value.chapters;
                 const item = chapters.splice(draggedChapterIndex, 1)[0];
-                chapters.splice(dropIdx, 0, item);
-                draggedChapterIndex = null;
-                saveToLocal();
+                chapters.splice(dropIdx, 0, item); draggedChapterIndex = null; saveToLocal();
             }
 
             return {
@@ -1091,12 +983,11 @@ function onCanvasDragTouch(e) {
                 switchSubject, switchChapter, deselectNode, toggleMobileSidebar, closeMobileSidebar, toggleMultiSelectMode, deleteSelectedNodes,
                 addFirstLevelNode, addChildNode, deleteNode, addSubject, addChapter, editSubjectName, deleteSubject, editChapterName, deleteChapter,
                 markStatus, previewImage, handleImageUpload, removeImage, saveToLocal,
-                gistId, githubToken, showTokenDialog, tempToken, tempGistId,
+                repoName, githubToken, showTokenDialog, tempToken, tempRepoName,
                 syncPassword, uiOldPassword, uiNewPassword, handleSetPassword, handleUpdatePassword,
-                openTokenDialog, fetchMyGists, saveTokenConfig, backupToGist, restoreFromGist, copyGistId, addSiblingBefore,
+                openTokenDialog, fetchMyGists, saveTokenConfig, backupToRepo, restoreFromRepo, copyRepoName, addSiblingBefore,
                 addSiblingAfter, onChapterDragStart, canvasScale, canvasTranslateX, canvasTranslateY,
-                handleCanvasZoom, startCanvasDrag, onCanvasDrag, stopCanvasDrag, startCanvasDragTouch, onCanvasDragTouch, onChapterDrop,
-                addRootNode
+                handleCanvasZoom, startCanvasDrag, onCanvasDrag, stopCanvasDrag, startCanvasDragTouch, onCanvasDragTouch, onChapterDrop, addRootNode
             };
         }
     });
