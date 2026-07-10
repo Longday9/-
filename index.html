@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>考研多级织网 · 远端图文分离版</title>
+    <title>考研多级织网 · 空间隔离加速版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -36,8 +36,11 @@
         .node-multi-selected { box-shadow: 0 0 0 4px rgba(245,158,11,0.6) !important; border-color: #f59e0b !important; }
         .portal-icon { animation: portalPulse 2.5s infinite; }
         @keyframes portalPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(147,51,234,0.5); } 50% { box-shadow: 0 0 0 8px rgba(147,51,234,0); } }
-        .connector-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; z-index: 5; box-shadow: 0 0 0 3px #e2e8f0; }
-        .connector-line-h { height: 3px; background: linear-gradient(90deg, #94a3b8 60%, #cbd5e1 100%); border-radius: 2px; flex-shrink: 0; min-width: 20px; }
+        
+        /* 🎇 升级：精细化导向针 */
+        .connector-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; z-index: 5; transition: all 0.3s; }
+        .connector-line-h { height: 2px; flex-shrink: 0; min-width: 14px; transition: all 0.3s; }
+        
         .sidebar-overlay { transition: opacity 0.3s; }
         .sidebar-drawer { transition: transform 0.3s; }
         .bottom-sheet { transition: transform 0.35s; border-radius: 20px 20px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.18); }
@@ -264,38 +267,25 @@
     </div>
 
     <div v-if="showTokenDialog" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" @click.self="showTokenDialog = false">
-        <div class="bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-600 max-h-[90vh] overflow-y-auto no-scrollbar">
-            <div class="text-white font-bold mb-3 text-sm flex items-center justify-between">
-                <span>🔑 配置 GitHub 专属仓库同步</span>
+        <div class="bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-600">
+            <div class="text-white font-bold mb-4 text-sm flex items-center justify-between">
+                <span>🔑 配置 GitHub 远端同步通道</span>
                 <button @click="showTokenDialog = false" class="text-slate-400 hover:text-white">✕</button>
             </div>
             
-            <label class="text-slate-400 text-[10px] mb-1 block">GitHub Personal Access Token</label>
-            <input type="password" v-model="tempToken" placeholder="github_pat_..." class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
-            
-            <label class="text-slate-400 text-[10px] mb-1 block">GitHub 远端仓库路径</label>
-            <input type="text" v-model="tempRepoName" placeholder="格式: 用户名/仓库名 比如 abc/kaoyan-notes" class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
-            
-            <div class="flex justify-between items-center mb-4">
-                <button @click="fetchMyGists" class="text-indigo-400 text-xs underline font-medium hover:text-indigo-300">🔍 验证安全密码并审计云端数据状态</button>
-            </div>
-
-            <div class="border-t border-slate-700 pt-3 mt-1 mb-4">
-                <div class="text-indigo-300 font-bold text-xs mb-2 flex items-center gap-1">🔒 跨设备多端同步密保</div>
-                <div v-if="!syncPassword" class="space-y-2">
-                    <p class="text-[10px] text-slate-400 leading-relaxed">初次设置密保需要配合上方有效的 Token 进行验证。设置后请执行一次“备份”同步到云端。</p>
-                    <input type="password" v-model="uiNewPassword" placeholder="为查找功能加锁，输入新密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
-                    <button @click="handleSetPassword" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow">🛡️ 初始化密保密码</button>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-slate-400 text-[10px] mb-1 block">GitHub Personal Access Token</label>
+                    <input type="password" v-model="tempToken" placeholder="粘贴以 ghp_ 开头的完全访问密钥" class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
-                <div v-else class="space-y-2">
-                    <p class="text-[10px] text-emerald-400 leading-relaxed">✓ 密保密码已就绪。修改密码只需输入旧密码即可。</p>
-                    <input type="password" v-model="uiOldPassword" placeholder="输入旧密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
-                    <input type="password" v-model="uiNewPassword" placeholder="输入全新密保密码..." class="w-full px-3 py-1.5 bg-slate-700 border border-slate-500 rounded-lg text-white text-xs">
-                    <button @click="handleUpdatePassword" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow">⚙️ 修改密保密码</button>
+                
+                <div>
+                    <label class="text-slate-400 text-[10px] mb-1 block">GitHub 远端仓库路径</label>
+                    <input type="text" v-model="tempRepoName" placeholder="格式: 用户名/仓库名 (例如 abc/kaoyan-notes)" class="w-full px-3 py-2 bg-slate-700 border border-slate-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 border-t border-slate-700 pt-3">
+            <div class="flex justify-end gap-2 border-t border-slate-700 pt-3 mt-5">
                 <button @click="showTokenDialog = false" class="px-4 py-2 text-xs bg-slate-600 text-white rounded-lg hover:bg-slate-500">取消</button>
                 <button @click="saveTokenConfig" class="px-4 py-2 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">保存配置</button>
             </div>
@@ -333,20 +323,27 @@
                 return 'px-2 py-1.5 rounded-md border text-xs';
             });
 
+            // 🎨 【核心改动】：根据深度计算主干导线主题色
+            const getLineColor = computed(() => {
+                const colors = ['#6366f1', '#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b'];
+                return colors[props.depth % colors.length];
+            });
+
             function onClickNode() {
                 if (canvasDragged && canvasDragged.value) return; 
                 if (multiSelectMode.value) toggleNodeMultiSelect(props.node);
                 else selectNode(props.node);
             }
 
-            return { isSelected, isMultiSelected, hasContent, nodeSizeClass, onClickNode, getNodeStyle, handlePortalJump };
+            return { isSelected, isMultiSelected, hasContent, nodeSizeClass, onClickNode, getNodeStyle, handlePortalJump, getLineColor };
         },
         template: `
-            <div class="flex items-center gap-2 md:gap-3 relative z-10">
+            <div class="flex items-center gap-2 md:gap-3 relative z-10 my-1">
                 <template v-if="depth > 0">
-                    <div class="connector-line-h w-3 md:w-5"></div>
-                    <div class="connector-dot"></div>
+                    <div class="connector-line-h w-3 md:w-5" :style="{ background: getLineColor }"></div>
+                    <div class="connector-dot" :style="{ background: getLineColor, boxShadow: '0 0 0 3px ' + getLineColor + '20' }"></div>
                 </template>
+                
                 <div @click.stop="onClickNode" :style="getNodeStyle(node)"
                      :class="['tree-node shrink-0 relative', nodeSizeClass, isSelected ? 'node-selected ring-[3px] ring-indigo-500/50 border-indigo-600' : '', isMultiSelected ? 'node-multi-selected' : '']">
                     <div class="flex flex-col items-center w-full">
@@ -358,12 +355,14 @@
                         <span v-if="isMultiSelected" class="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-500 text-white rounded-full text-[10px] font-bold">✓</span>
                     </div>
                 </div>
+                
                 <template v-if="node.children && node.children.length > 0">
-                    <div class="flex flex-col gap-1.5 pl-3 md:pl-5 py-0.5 shrink-0" :style="{ borderLeft: depth >= 0 ? '2px solid #cbd5e1' : 'none' }">
+                    <div class="flex flex-col gap-2.5 pl-4 pr-2.5 py-2.5 shrink-0 bg-slate-50/50 border border-dashed rounded-xl ml-2 shadow-sm transition-all duration-300"
+                         :style="{ borderColor: getLineColor + '30', borderLeftWidth: '3px', borderLeftColor: getLineColor }">
                         <tree-node v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1" />
                     </div>
                 </template>
-                <div v-else-if="depth > 0" class="text-[10px] text-slate-300 italic w-24 text-center border border-dashed py-1 bg-white/50">下级</div>
+                <div v-else-if="depth > 0" class="text-[10px] text-slate-300 italic w-20 text-center border border-dashed py-1 bg-white/50 rounded-md">下级</div>
             </div>
         `
     };
@@ -394,10 +393,7 @@
 
             const repoName = ref(localStorage.getItem('github_repo') || '');
             const githubToken = ref(localStorage.getItem('github_token') || '');
-            const syncPassword = ref(localStorage.getItem('sync_password') || '');
             
-            const uiOldPassword = ref('');
-            const uiNewPassword = ref('');
             const showTokenDialog = ref(false);
             const tempToken = ref('');
             const tempRepoName = ref('');
@@ -468,7 +464,6 @@
                 }
             });
 
-            // ⭐【优化点】：切换为高可用 gcore 节点，提供在国内更快的加速访问体验
             function optimizeImageUrl(url) {
                 if (!url) return '';
                 if (url.startsWith('data:image')) return url;
@@ -477,10 +472,7 @@
                         let clean = url.replace('https://raw.githubusercontent.com/', '');
                         let parts = clean.split('/');
                         if (parts.length >= 3) {
-                            let user = parts[0];
-                            let repo = parts[1];
-                            let branch = parts[2];
-                            let rest = parts.slice(3).join('/');
+                            let user = parts[0]; let repo = parts[1]; let branch = parts[2]; let rest = parts.slice(3).join('/');
                             return `https://gcore.jsdelivr.net/gh/${user}/${repo}@${branch}/${rest}`;
                         }
                     } catch(e) { return url; }
@@ -495,13 +487,7 @@
                         const p = JSON.parse(saved);
                         let actualData = [];
                         if (Array.isArray(p)) { actualData = p; } 
-                        else if (p && p.data) {
-                            actualData = p.data;
-                            if (p.password) {
-                                syncPassword.value = p.password;
-                                localStorage.setItem('sync_password', p.password);
-                            }
-                        }
+                        else if (p && p.data) { actualData = p.data; }
                         if (actualData.length) {
                             actualData.forEach(s => {
                                 s.chapters?.forEach(c => {
@@ -751,7 +737,6 @@
             function markStatus(s) { if(selectedNode.value) { selectedNode.value.status = s; saveToLocal(); } }
             function previewImage(url) { previewImageUrl.value = optimizeImageUrl(url); }
 
-            // ⭐【优化点】：加强前端压缩效率，最大宽度限死1000px，JPEG压缩率降为0.7，显著削减传输开销
             function handleImageUpload(e) {
                 const files = e.target.files; if(!files?.length) return;
                 if(!selectedNode.value) { alert('请先选中节点'); return; }
@@ -768,10 +753,10 @@
                             let { width, height } = img;
                             const maxW=1000; if(width>maxW) { height=Math.round(height*maxW/width); width=maxW; }
                             const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
-                            const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,width,height);
+                            canvas.getContext('2d').drawImage(img,0,0,width,height);
                             
                             const outputFormat = file.type==='image/png' ? 'image/png' : 'image/jpeg';
-                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.70; // 调整为更轻量级的 0.70
+                            const outputQuality = outputFormat==='image/png' ? 1.0 : 0.70;
                             const base64Data = canvas.toDataURL(outputFormat, outputQuality);
                             
                             const imgId = 'img_' + Date.now() + Math.random().toString(36).slice(2, 6);
@@ -807,67 +792,14 @@
             }
             
             function removeImage(idx) { if(selectedNode.value?.images) { selectedNode.value.images.splice(idx,1); saveToLocal(); } }
-            
-            function saveToLocal() { 
-                try { localStorage.setItem('kaoyan_infinite_v3', JSON.stringify({ password: syncPassword.value || '', data: subjects.value })); } catch(e) {} 
-            }
-
-            function openTokenDialog() { 
-                tempToken.value = githubToken.value; tempRepoName.value = repoName.value; 
-                uiOldPassword.value = ''; uiNewPassword.value = ''; showTokenDialog.value = true; 
-            }
-
+            function saveToLocal() { try { localStorage.setItem('kaoyan_infinite_v3', JSON.stringify({ data: subjects.value })); } catch(e) {} }
+            function openTokenDialog() { tempToken.value = githubToken.value; tempRepoName.value = repoName.value; showTokenDialog.value = true; }
             function copyRepoName() { if (repoName.value) { navigator.clipboard.writeText(repoName.value); alert('仓库路径已复制'); } }
-
-            async function handleSetPassword() {
-                if (!tempToken.value.trim()) { alert('请先填入有效的 GitHub Token 进行鉴权！'); return; }
-                if (!uiNewPassword.value.trim()) { alert('密保密码不能为空'); return; }
-                try {
-                    const vr = await fetch('https://api.github.com/user', { headers: { Authorization: `token ${tempToken.value.trim()}` } });
-                    if (!vr.ok) { alert('Token 验证失败，请仔细检查！'); return; }
-                    syncPassword.value = uiNewPassword.value.trim();
-                    localStorage.setItem('sync_password', syncPassword.value);
-                    uiNewPassword.value = ''; saveToLocal();
-                    alert('🎯 密保密码初始化成功！请记得保存配置并执行一次备份。');
-                } catch(e) { alert('网络连接错误'); }
-            }
-
-            function handleUpdatePassword() {
-                if (uiOldPassword.value.trim() !== syncPassword.value) { alert('❌ 原密保密码错误！'); return; }
-                if (!uiNewPassword.value.trim()) { alert('新密码不能为空'); return; }
-                syncPassword.value = uiNewPassword.value.trim();
-                localStorage.setItem('sync_password', syncPassword.value);
-                uiOldPassword.value = ''; uiNewPassword.value = ''; saveToLocal();
-                alert('✨ 密保密码更新成功！请执行备份同步。');
-            }
-
-            async function fetchMyGists() {
-                if (!tempToken.value.trim() || !tempRepoName.value.trim()) { alert('请先填齐 Token 和 仓库名！'); return; }
-                const userPass = prompt('【安全审计】请输入您设置的跨端同步密保密码：');
-                if (userPass === null) return;
-                try {
-                    const resp = await fetch(`https://api.github.com/repos/${tempRepoName.value.trim()}/contents/kaoyan_data.json`, {
-                        headers: { Authorization: `token ${tempToken.value.trim()}` }
-                    });
-                    if (resp.status === 404) { alert('🔓 审计通过：云端仓库干净，未发现冲突的备份文件，可安全使用！'); return; }
-                    if (!resp.ok) { alert('无法访问该仓库，请确保仓库存在且 Token 拥有完全读写权限。'); return; }
-                    
-                    const resData = await resp.json();
-                    const cleanContent = resData.content.replace(/\s/g, '');
-                    const decoded = decodeURIComponent(escape(atob(cleanContent)));
-                    const parsed = JSON.parse(decoded);
-                    if (parsed && parsed.password && parsed.password !== userPass.trim()) {
-                        alert('❌ 审计拦截：远端数据的跨端密保与您刚刚输入的密码不符！'); return;
-                    }
-                    alert('🔓 审计通过：密码验证完全正确，多端数据链安全无误。');
-                } catch (e) { alert('审计中断：' + e.message); }
-            }
 
             async function saveTokenConfig() {
                 if (!tempToken.value.trim() || !tempRepoName.value.trim()) { alert('配置项均不能为空'); return; }
                 githubToken.value = tempToken.value.trim(); localStorage.setItem('github_token', githubToken.value);
                 repoName.value = tempRepoName.value.trim(); localStorage.setItem('github_repo', repoName.value);
-                
                 try {
                     const resp = await fetch(`https://api.github.com/repos/${repoName.value}`, { headers: { Authorization: `token ${githubToken.value}` } });
                     if (resp.ok) { alert('配置保存，成功连通 GitHub 目标仓库！'); showTokenDialog.value = false; } 
@@ -880,9 +812,7 @@
                 const traverse = (node) => {
                     if (!node) return;
                     if (node.images && Array.isArray(node.images)) {
-                        node.images.forEach(img => {
-                            if (img.dataUrl && img.dataUrl.startsWith('data:image')) { pendingUploads.push({ img }); }
-                        });
+                        node.images.forEach(img => { if (img.dataUrl && img.dataUrl.startsWith('data:image')) { pendingUploads.push({ img }); } });
                     }
                     if (node.children) node.children.forEach(traverse);
                 };
@@ -910,13 +840,11 @@
                 await uploadPendingImages();
                 let sha = null;
                 try {
-                    const check = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, {
-                        headers: { Authorization: `token ${githubToken.value}` }
-                    });
+                    const check = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, { headers: { Authorization: `token ${githubToken.value}` } });
                     if (check.ok) { const checkData = await check.json(); sha = checkData.sha; }
                 } catch(e){}
 
-                const jsonStr = JSON.stringify({ password: syncPassword.value, data: subjects.value });
+                const jsonStr = JSON.stringify({ data: subjects.value });
                 const base64Content = btoa(unescape(encodeURIComponent(jsonStr)));
                 const body = { message: '🎨 备份考研思维导图数据（全网图文分离版）', content: base64Content };
                 if (sha) body.sha = sha;
@@ -935,9 +863,7 @@
             async function restoreFromRepo() {
                 if (!githubToken.value || !repoName.value) { alert('请先配置云同步权限！'); return; }
                 try {
-                    const resp = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, {
-                        headers: { Authorization: `token ${githubToken.value}` }
-                    });
+                    const resp = await fetch(`https://api.github.com/repos/${repoName.value}/contents/kaoyan_data.json`, { headers: { Authorization: `token ${githubToken.value}` } });
                     if (!resp.ok) { alert('云端未找到备份的 kaoyan_data.json 文件。'); return; }
                     
                     const resData = await resp.json();
@@ -947,15 +873,8 @@
                     if (!confirm('确定拉取云端覆盖本地多端数据吗？')) return;
                     
                     const parsed = JSON.parse(decoded);
-                    if (parsed && parsed.data && Array.isArray(parsed.data)) {
-                        subjects.value = parsed.data;
-                        if (parsed.password) {
-                            syncPassword.value = parsed.password;
-                            localStorage.setItem('sync_password', syncPassword.value);
-                        }
-                    } else if (Array.isArray(parsed)) {
-                        subjects.value = parsed; 
-                    }
+                    if (parsed && parsed.data && Array.isArray(parsed.data)) { subjects.value = parsed.data; } 
+                    else if (Array.isArray(parsed)) { subjects.value = parsed; }
                     
                     saveToLocal(); deselectNode();
                     await nextTick();
@@ -964,13 +883,14 @@
                         if (subjects.value[0].chapters.length > 0) currentChapterId.value = subjects.value[0].chapters[0].id;
                     }
                     alert('✅ 跨设备云恢复成功！');
-                } catch(e) { alert('数据拉取或密码解包出现错位: ' + e.message); }
+                } catch(e) { alert('数据拉取或解包出现错位: ' + e.message); }
             }
 
             let draggedChapterIndex = null;
             function onChapterDragStart(e, idx) { draggedChapterIndex = idx; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', idx); }
             function onChapterDrop(e, dropIdx) {
-                if (draggedChapterIndex === null || draggedChapterIndex === dropIdx || !currentSubject.value) return;
+                if (draggedChapterIndex === null || draggedChapterIndex === dropIdx) return;
+                if (!currentSubject.value) return;
                 const chapters = currentSubject.value.chapters;
                 const item = chapters.splice(draggedChapterIndex, 1)[0];
                 chapters.splice(dropIdx, 0, item); draggedChapterIndex = null; saveToLocal();
@@ -983,8 +903,7 @@
                 addFirstLevelNode, addChildNode, deleteNode, addSubject, addChapter, editSubjectName, deleteSubject, editChapterName, deleteChapter,
                 markStatus, previewImage, handleImageUpload, removeImage, saveToLocal,
                 repoName, githubToken, showTokenDialog, tempToken, tempRepoName,
-                syncPassword, uiOldPassword, uiNewPassword, handleSetPassword, handleUpdatePassword,
-                openTokenDialog, fetchMyGists, saveTokenConfig, backupToRepo, restoreFromRepo, copyRepoName, addSiblingBefore,
+                openTokenDialog, saveTokenConfig, backupToRepo, restoreFromRepo, copyRepoName, addSiblingBefore,
                 addSiblingAfter, onChapterDragStart, canvasScale, canvasTranslateX, canvasTranslateY,
                 handleCanvasZoom, startCanvasDrag, onCanvasDrag, stopCanvasDrag, startCanvasDragTouch, onCanvasDragTouch, onChapterDrop, addRootNode,
                 optimizeImageUrl
